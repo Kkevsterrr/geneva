@@ -24,7 +24,7 @@ Install Python dependencies:
 ## Running it
 
 ```
-# python3 engine.py --server-port 80 --strategy "[TCP:flags:A]-duplicate(,tamper{TCP:flags:replace:R})-| \/" --log debug
+# python3 engine.py --server-port 80 --strategy "[TCP:flags:PA]-duplicate(tamper{TCP:dataofs:replace:10}(tamper{TCP:chksum:corrupt},),)-|" --log debug
 2019-10-14 16:34:45 DEBUG:[ENGINE] Engine created with strategy \/ (ID bm3kdw3r) to port 80
 2019-10-14 16:34:45 DEBUG:[ENGINE] Configuring iptables rules
 2019-10-14 16:34:45 DEBUG:[ENGINE] iptables -A OUTPUT -p tcp --sport 80 -j NFQUEUE --queue-num 1
