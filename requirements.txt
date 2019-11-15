@@ -1,0 +1,6 @@
+scapy==2.4.3
+requests
+netifaces
+netfilterqueue
+cryptography==2.5
+requests
