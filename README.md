@@ -9,7 +9,7 @@ This code release specifically contains the strategy engine used by Geneva, its 
 ## Setup
 
 Geneva has been developed and tested for Centos or Debian-based systems. Due to limitations of
-netfilter and raw sockets, Geneva does not work on OS X or Windows at this time and requires python3.7+.
+netfilter and raw sockets, Geneva does not work on OS X or Windows at this time and requires *python3.6* (with more versions coming soon).
 
 Install netfilterqueue dependencies:
 ```
