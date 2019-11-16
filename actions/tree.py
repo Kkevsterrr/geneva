@@ -177,7 +177,7 @@ class ActionTree():
         # it would parse out the trigger "TCP:flags:SA" and the tree as
         # "-tamper{TCP:flags:corrupt}"
         match = re.match(r"\[(\S*)\]-(\S*)|", string)
-        if not match or not match[0]:
+        if not match or not match.group(0):
             logger.error("Could not identify trigger or tree")
             return False
 
