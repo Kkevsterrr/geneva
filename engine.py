@@ -34,6 +34,8 @@ else:
 if WINDOWS:
     import pydivert
     from pydivert.consts import Direction
+else:
+    import netfilterqueue
 
 class Engine:
     def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
