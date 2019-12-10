@@ -123,8 +123,6 @@ class WindowsEngine(Engine):
                 # Send to inbound action tree, if any
                 self.handle_inbound_packet(packet)
 
-        return
-
     def __enter__(self):
         """
         Allows the engine to be used as a context manager; simply launches the
@@ -138,7 +136,6 @@ class WindowsEngine(Engine):
         Allows the engine to be used as a context manager; simply stops the engine
         """
         self.shutdown_divert()
-        return
 
     def mysend(self, packet, dir):
         """
@@ -148,7 +145,7 @@ class WindowsEngine(Engine):
             self.logger.debug("Sending packet %s", str(packet))
             # Convert the packet to a bytearray so memoryview can edit the underlying memory
             pack = bytearray(bytes(packet.packet))
-            # Don't recalculate checksum since sometimes we want to change it
+            # Don't recalculate checksum since sometimes we will have already changed it
             self.divert.send(pydivert.Packet(memoryview(pack), self.interface, dir), recalculate_checksum=False)
         except Exception:
             self.logger.exception("Error in engine mysend.")
