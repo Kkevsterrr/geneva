@@ -119,7 +119,7 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     ch.setLevel(log_level)
-    CONSOLE_LOG_LEVEL = log_level
+    CONSOLE_LOG_LEVEL = ch.level
     logger.addHandler(ch)
     return logger
 
