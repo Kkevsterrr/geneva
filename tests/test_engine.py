@@ -19,3 +19,32 @@ def test_engine():
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
         os.system("curl http://example.com?q=ultrasurf")
+
+
+def test_engine_sleep():
+    """
+    Basic engine test with sleep action
+    """
+    # Port to run the engine on
+    port = 80
+    # Strategy to use
+    strategy = "[TCP:flags:S]-sleep{1}-|"
+
+    # Create the engine in debug mode
+    with engine.Engine(port, strategy, log_level="info") as eng:
+        os.system("curl http://example.com?q=ultrasurf")
+
+
+def test_engine_trace():
+    """
+    Basic engine test with trace
+    """
+    # Port to run the engine on
+    port = 80
+    # Strategy to use
+    strategy = "[TCP:flags:PA]-trace{2:10}-|"
+
+    # Create the engine in debug mode
+    with engine.Engine(port, strategy, log_level="debug") as eng:
+        os.system("curl -m 5 http://example.com?q=ultrasurf")
+

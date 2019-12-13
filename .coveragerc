@@ -9,6 +9,7 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     def get_args
+    def main
 ignore_errors = True
 omit =
     tests/*
