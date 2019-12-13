@@ -91,3 +91,4 @@ def test_trace_parse_handling():
     print("Testing incorrect parsing:")
     assert not actions.trace.TraceAction().parse("5:4", logger)
     assert not actions.trace.TraceAction().parse("THISHOULDFAIL", logger)
+    assert not actions.trace.TraceAction().parse("", logger)
