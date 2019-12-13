@@ -1,0 +1,16 @@
+[run]
+branch = True
+source = ./
+
+[report]
+exclude_lines =
+    if self.debug:
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    def get_args
+    def main
+ignore_errors = True
+omit =
+    tests/*
+    examples/*

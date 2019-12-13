@@ -27,20 +27,6 @@ class Trigger(object):
         self.bomb_trigger = bool(gas and gas < 0)
         self.ran = False
 
-    @staticmethod
-    def get_gas():
-        """
-        Returns a random value for gas for this trigger.
-        """
-        if GAS_ENABLED and random.random() < 0.2:
-            # Use gas in 20% of scenarios
-            # Pick a number for gas between 0 - 5
-            gas_remaining = int(random.random() * 5)
-        else:
-            # Do not use gas
-            gas_remaining = None
-        return gas_remaining
-
     def is_applicable(self, packet, logger):
         """
         Checks if this trigger is applicable to a given packet.

@@ -34,8 +34,6 @@ class Engine():
         self.server_port = server_port
         self.seen_packets = []
         # Set up the directory and ID for logging
-        if not output_directory:
-            output_directory = "trials"
         actions.utils.setup_dirs(output_directory)
         if not environment_id:
             environment_id = actions.utils.get_id()
