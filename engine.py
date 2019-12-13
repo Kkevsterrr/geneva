@@ -18,6 +18,8 @@ from scapy.utils import wrpcap
 from scapy.config import conf
 from scapy.all import send, Raw
 
+from library import LIBRARY
+
 socket.setdefaulttimeout(1)
 
 import actions.packet
@@ -457,6 +459,7 @@ def get_args():
     parser.add_argument('--server-port', type=int, action='store', required=True)
     parser.add_argument('--environment-id', action='store', help="ID of the current strategy under test. If not provided, one will be generated.")
     parser.add_argument('--strategy', action='store', help="Strategy to deploy")
+    parser.add_argument('--strategy-index', action='store', help="Strategy to deploy, specified by index in the library")
     parser.add_argument('--output-directory', default="trials", action='store', help="Where to output logs, captures, and results. Defaults to trials/.")
     parser.add_argument('--log', action='store', default="debug",
                         choices=("debug", "info", "warning", "critical", "error"),
@@ -471,16 +474,23 @@ def main(args):
     Kicks off the engine with the given arguments.
     """
     try:
+        if args["strategy"]:
+            strategy = args["strategy"]
+        elif args["strategy-index"]:
+            strategy = LIBRARY[int(args["strategy-index"])][0]
+        else:
+            # Default to first strategy
+            strategy = LIBRARY[0][0]
         if WINDOWS:
             eng = WindowsEngine(args["server_port"],
-                        args["strategy"],
+                        strategy,
                         environment_id=args.get("environment_id"),
                         output_directory = args.get("output_directory"),
                         log_level=args["log"])
             eng.initialize_divert()
         else:
             eng = LinuxEngine(args["server_port"],
-                        args["strategy"],
+                        strategy,
                         environment_id=args.get("environment_id"),
                         output_directory = args.get("output_directory"),
                         log_level=args["log"])
