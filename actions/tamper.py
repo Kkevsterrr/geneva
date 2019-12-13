@@ -2,15 +2,23 @@
 TamperAction
 
 One of the four packet-level primitives supported by Geneva. Responsible for any packet-level
-modifications (particularly header modifications). It supports replace and corrupt mode -
-in replace mode, it changes a packet field to a fixed value; in corrupt mode, it changes a packet
-field to a randomly generated value each time it is run.
+modifications (particularly header modifications). It supports the following primitives:
+ - no operation: it returns the packet given
+ - replace: it changes a packet field to a fixed value
+ - corrupt: it changes a packet field to a randomly generated value each time it is run
+ - add: adds a given value to the value in a field
+ - compress: performs DNS decompression on the packet (if applicable)
 """
 
 from actions.action import Action
 import actions.utils
+from actions.layer import DNSLayer
 
 import random
+
+
+# All supported tamper primitives
+SUPPORTED_PRIMITIVES = ["corrupt", "replace", "add", "compress"]
 
 
 class TamperAction(Action):
@@ -23,10 +31,7 @@ class TamperAction(Action):
         self.tamper_value = tamper_value
         self.tamper_proto = actions.utils.string_to_protocol(tamper_proto)
         self.tamper_proto_str = tamper_proto
-
         self.tamper_type = tamper_type
-        if not self.tamper_type:
-            self.tamper_type = random.choice(["corrupt", "replace"])
 
     def tamper(self, packet, logger):
         """
@@ -41,8 +46,19 @@ class TamperAction(Action):
 
         new_value = self.tamper_value
         # If corrupting the packet field, generate a value for it
-        if self.tamper_type == "corrupt":
-            new_value = packet.gen(self.tamper_proto_str, self.field)
+        try:
+            if self.tamper_type == "corrupt":
+                new_value = packet.gen(self.tamper_proto_str, self.field)
+            elif self.tamper_type == "add":
+                new_value = int(self.tamper_value) + int(old_value)
+            elif self.tamper_type == "compress":
+                return packet.dns_decompress(logger)
+        except NotImplementedError:
+            # If a primitive does not support the type of packet given
+            return packet
+        except Exception:
+            # If an unexpected error has occurred
+            return packet
 
         logger.debug("  - Tampering %s field `%s` (%s) by %s (to %s)" %
                      (self.tamper_proto_str, self.field, str(old_value), self.tamper_type, str(new_value)))
@@ -67,8 +83,10 @@ class TamperAction(Action):
         s = Action.__str__(self)
         if self.tamper_type == "corrupt":
             s += "{%s:%s:%s}" % (self.tamper_proto_str, self.field, self.tamper_type)
-        elif self.tamper_type in ["replace"]:
+        elif self.tamper_type in ["replace", "add"]:
             s += "{%s:%s:%s:%s}" % (self.tamper_proto_str, self.field, self.tamper_type, self.tamper_value)
+        elif self.tamper_type == "compress":
+            s += "{%s:%s:compress}" % ("DNS", "qd", )
 
         return s
 
