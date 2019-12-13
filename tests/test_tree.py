@@ -261,11 +261,13 @@ def test_tree():
     tamper = actions.tamper.TamperAction()
     tamper2 = actions.tamper.TamperAction()
     duplicate = actions.duplicate.DuplicateAction()
+    assert a.get_parent(None) == (None, None)
 
     a.add_action(None)
     a.add_action(tamper)
     assert a.get_slots() == 1
     a.add_action(tamper2)
+    assert a.get_parent(tamper2) == (tamper, "left")
     assert a.get_slots() == 1
     a.add_action(duplicate)
     assert a.get_slots() == 2
@@ -274,6 +276,7 @@ def test_tree():
     a = actions.tree.ActionTree("out", trigger=t)
     drop = actions.drop.DropAction()
     a.add_action(drop)
+    assert a.get_parent(drop) == (None, None)
     assert a.get_slots() == 0
     add_success = a.add_action(tamper)
     assert not add_success
@@ -323,6 +326,7 @@ def test_remove():
     duplicate.left = tamper2
     duplicate.right = tamper3
     a.add_action(duplicate)
+    assert a.get_parent(tamper3) == (duplicate, "right")
     assert len(a) == 4
     assert a.remove_action(duplicate)
     assert duplicate not in a
