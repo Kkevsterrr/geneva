@@ -39,8 +39,31 @@ if WINDOWS:
 else:
     import netfilterqueue
 
-class Engine:
+from abc import ABC, abstractmethod
+
+def Engine(server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
+    # Factory function to dynamically choose which engine to use.
+    # Users should initialize an Engine using this.
+    if WINDOWS:
+        eng = WindowsEngine(server_port, 
+                    string_strategy,
+                    environment_id=environment_id, 
+                    output_directory=output_directory, 
+                    log_level=log_level)
+    else:
+        eng = LinuxEngine(server_port, 
+                    string_strategy,
+                    environment_id=environment_id, 
+                    output_directory=output_directory, 
+                    log_level=log_level)
+
+    return eng
+
+class GenericEngine(ABC):
+    # Abstract Base Class defining an engine.
+    # Users should follow the contract laid out here to create custom engines.
     def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
+        # Do common setup
         self.server_port = server_port
         self.seen_packets = []
         # Set up the directory and ID for logging
@@ -53,18 +76,42 @@ class Engine:
         self.environment_id = environment_id
         # Set up a logger
         self.logger = actions.utils.get_logger(BASEPATH,
-                                               output_directory,
-                                               __name__,
-                                               "engine",
-                                               environment_id,
-                                               log_level=log_level)
+                                                output_directory,
+                                                __name__,
+                                                "engine",
+                                                environment_id,
+                                                log_level=log_level)
         self.output_directory = output_directory
 
         # Used for conditional context manager usage
         self.strategy = actions.utils.parse(string_strategy, self.logger)
         self.censorship_detected = False
 
-class WindowsEngine(Engine):
+    @abstractmethod
+    def initialize(self):
+        # Initialize the Engine. Users should call this directly.
+        pass
+
+    @abstractmethod
+    def shutdown(self):
+        # Clean up the Engine. Users should call this directly.
+        pass
+
+    def __enter__(self):
+        """
+        Allows the engine to be used as a context manager; simply launches the
+        engine.
+        """
+        self.initialize()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        """
+        Allows the engine to be used as a context manager; simply stops the engine
+        """
+        self.shutdown()
+
+class WindowsEngine(GenericEngine):
     def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
         super().__init__(server_port, string_strategy, environment_id=environment_id, output_directory=output_directory, log_level=log_level)
         # Instantialize a PyDivert channel, which we will use to redirect packets
@@ -73,7 +120,7 @@ class WindowsEngine(Engine):
         self.divert_thread_started = False
         self.interface = None # Using lazy evaluating as divert should know this       
 
-    def initialize_divert(self):
+    def initialize(self):
         """
         Initializes Divert such that all packets for the connection will come through us
         """
@@ -99,7 +146,7 @@ class WindowsEngine(Engine):
 
         return
 
-    def shutdown_divert(self):
+    def shutdown(self):
         """
         Closes the divert connection
         """
@@ -124,21 +171,7 @@ class WindowsEngine(Engine):
             elif packet.is_inbound:
                 # Send to inbound action tree, if any
                 self.handle_inbound_packet(packet)
-
-    def __enter__(self):
-        """
-        Allows the engine to be used as a context manager; simply launches the
-        engine.
-        """
-        self.initialize_divert()
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        """
-        Allows the engine to be used as a context manager; simply stops the engine
-        """
-        self.shutdown_divert()
-
+    
     def mysend(self, packet, dir):
         """
         Helper scapy sending method. Expects a Geneva Packet input.
@@ -199,11 +232,9 @@ class WindowsEngine(Engine):
         # Accept the modified packet
         self.mysend(packets[0], Direction.INBOUND)
 
-class LinuxEngine(Engine):
+class LinuxEngine(GenericEngine):
     def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
-
         super().__init__(server_port, string_strategy, environment_id=environment_id, output_directory=output_directory, log_level=log_level)
-
         # Setup variables used by the NFQueue system
         self.out_nfqueue_started = False
         self.in_nfqueue_started = False
@@ -221,19 +252,10 @@ class LinuxEngine(Engine):
         # of overhead.
         self.socket = conf.L3socket(iface=actions.utils.get_interface())
 
-    def __enter__(self):
-        """
-        Allows the engine to be used as a context manager; simply launches the
-        engine.
-        """
-        self.initialize_nfqueue()
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
         """
         Allows the engine to be used as a context manager; simply stops the engine
         """
-        self.shutdown_nfqueue()
+        self.shutdown()
 
     def mysend(self, packet):
         """
@@ -303,7 +325,7 @@ class LinuxEngine(Engine):
                 subprocess.check_call(cmd.split(), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=60)
         return cmds
 
-    def initialize_nfqueue(self):
+    def initialize(self):
         """
         Initializes the nfqueue for input and output forests.
         """
@@ -346,7 +368,7 @@ class LinuxEngine(Engine):
             i += 1
         self.logger.debug("NFQueue Initialized after %d", int(i))
 
-    def shutdown_nfqueue(self):
+    def shutdown(self):
         """
         Shutdown nfqueue.
         """
@@ -473,36 +495,27 @@ def main(args):
     """
     Kicks off the engine with the given arguments.
     """
+
     try:
         if args["strategy"]:
             strategy = args["strategy"]
-        elif args["strategy-index"]:
-            strategy = LIBRARY[int(args["strategy-index"])][0]
+        elif args["strategy_index"]:
+            strategy = LIBRARY[int(args["strategy_index"])][0]
         else:
             # Default to first strategy
             strategy = LIBRARY[0][0]
-        if WINDOWS:
-            eng = WindowsEngine(args["server_port"],
+        eng = Engine(args["server_port"],
                         strategy,
                         environment_id=args.get("environment_id"),
                         output_directory = args.get("output_directory"),
                         log_level=args["log"])
-            eng.initialize_divert()
-        else:
-            eng = LinuxEngine(args["server_port"],
-                        strategy,
-                        environment_id=args.get("environment_id"),
-                        output_directory = args.get("output_directory"),
-                        log_level=args["log"])
-            eng.initialize_nfqueue()
+        eng.initialize()
         while True:
             time.sleep(0.5)
+    except Exception as e:
+        print(e)
     finally:
-        if WINDOWS:
-            eng.shutdown_divert()
-        else:
-            eng.shutdown_nfqueue()
-
+        eng.shutdown()
 
 if __name__ == "__main__":
     main(vars(get_args()))
