@@ -1,0 +1,39 @@
+sudo: required
+dist: "bionic"
+
+language: python
+
+python:
+    - "3.6"
+
+install:
+    # Travis recently added systemd-resolvd to their VMs. Since full Geneva often runs its own DNS
+    # server to test DNS strategies, we need to disable system-resolvd. 
+    # First disable the service
+    - sudo systemctl disable systemd-resolved.service 
+    # Stop the service
+    - sudo systemctl stop systemd-resolved 
+    # With systemd not running, our own hostname won't resolve - this causes issues with sudo.
+    # Add back our hostname to /etc/hosts/ so sudo does not complain
+    - echo $(hostname -I | cut -d\  -f1) $(hostname) | sudo tee -a /etc/hosts 
+    # Replace the 127.0.0.53 nameserver with Google's
+    - sudo sed 's/nameserver.*/nameserver 8.8.8.8/' /etc/resolv.conf > /tmp/resolv.conf.new 
+    - sudo mv /tmp/resolv.conf.new /etc/resolv.conf
+    # Now that systemd-resolv.conf is safely disabled, we can now setup for Geneva
+    - sudo apt-get clean # travis having mirror sync issues
+    # Install dependencies
+    - sudo apt-get update
+    - sudo apt-get -y install libnetfilter-queue-dev python3 python3-pip python3-setuptools graphviz 
+    # Since sudo is required but travis does not set up the root environment, we must override the
+    # secure_path in sudoers in order for travis's setup to take effect for sudo commands
+    - printf "Defaults\tenv_reset\nDefaults\tmail_badpass\nDefaults\tsecure_path="/home/travis/virtualenv/python3.6.7/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"\nroot\tALL=(ALL:ALL) ALL\n#includedir /etc/sudoers.d\n" > /tmp/sudoers.tmp 
+    # Verify the sudoers file
+    - sudo visudo -c -f /tmp/sudoers.tmp 
+    # Copy in the sudoers file
+    - sudo cp /tmp/sudoers.tmp /etc/sudoers 
+    # Now that sudo is good to go, finish installing dependencies
+    - sudo python3 -m pip install -r requirements.txt
+    - sudo python3 -m pip install slackclient pytest-cov
+
+script:
+    - sudo python3 -m pytest --cov=./ -sv tests/ --tb=short
