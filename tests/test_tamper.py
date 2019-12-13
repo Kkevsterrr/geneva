@@ -358,6 +358,7 @@ def test_options(value, test_type):
         tamper = actions.tamper.TamperAction(None, field="options-%s" % value.lower(), tamper_type="corrupt", tamper_value=bytes([12]))
     else:
         tamper = actions.tamper.TamperAction(None)
+        assert tamper.parse("TCP:options-%s:replace:" % value.lower(), logger)
         assert tamper.parse("TCP:options-%s:corrupt" % value.lower(), logger)
 
     packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
