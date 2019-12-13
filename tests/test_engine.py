@@ -57,9 +57,9 @@ def test_engine_trace():
         os.system("curl -m 5 http://example.com?q=ultrasurf")
 
 
-def test_engine_trace():
+def test_engine_drop():
     """
-    Basic engine test with trace
+    Basic engine test with drop
     """
     # Port to run the engine on
     port = 80
