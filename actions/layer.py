@@ -180,6 +180,7 @@ class Layer():
         value = urllib.parse.unquote(value)
 
         value = value.encode('utf-8')
+        # Add support for injecting arbitrary protocol payloads if requested
         dns_payload = b"\x009ib\x81\x80\x00\x01\x00\x01\x00\x00\x00\x01\x08examples\x03com\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x01+\x00\x04\xc7\xbf2I\x00\x00)\x02\x00\x00\x00\x00\x00\x00\x00"
         http_payload = b"GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n"
 
@@ -194,7 +195,7 @@ class Layer():
         as a field properly.
         """
         load = ''.join([random.choice(string.ascii_lowercase + string.digits) for k in range(10)])
-        return random.choice(urllib.parse.quote(load))
+        return urllib.parse.quote(load)
 
 
 class IPLayer(Layer):
