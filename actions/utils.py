@@ -135,34 +135,6 @@ def close_logger(logger):
             handler.close()
 
 
-class Logger():
-    """
-    Logging class context manager, as a thin wrapper around the logging class to help
-    handle closing open file descriptors.
-    """
-    def __init__(self, log_dir, logger_name, log_name, environment_id, log_level=logging.DEBUG):
-        self.log_dir = log_dir
-        self.logger_name = logger_name
-        self.log_name = log_name
-        self.environment_id = environment_id
-        self.log_level = log_level
-        self.logger = None
-
-    def __enter__(self):
-        """
-        Sets up a logger.
-        """
-        self.logger = get_logger(PROJECT_ROOT, self.log_dir, self.logger_name, self.log_name, self.environment_id, log_level=self.log_level)
-        return self.logger
-
-    def __exit__(self, exc_type, exc_value, tb):
-        """
-        Closes file handles.
-        """
-        close_logger(self.logger)
-
-
-
 def get_console_log_level():
     """
     returns log level of console handler
@@ -203,18 +175,6 @@ def setup_dirs(output_dir):
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
     return ga_log_dir
-
-
-def get_from_fuzzed_or_real_packet(environment_id, real_packet_probability, enable_options=True, enable_load=True):
-    """
-    Retrieves a protocol, field, and value from a fuzzed or real packet, depending on
-    the given probability and if given packets is not None.
-    """
-    packets = actions.utils.read_packets(environment_id)
-    if packets and random.random() < real_packet_probability:
-        packet = random.choice(packets)
-        return packet.get_random()
-    return actions.packet.Packet().gen_random()
 
 
 def get_interface():

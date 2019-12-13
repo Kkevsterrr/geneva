@@ -4,6 +4,7 @@ import pytest
 import actions.tree
 import actions.drop
 import actions.tamper
+import actions.trace
 import actions.duplicate
 import actions.sleep
 import actions.utils
@@ -80,3 +81,13 @@ def test_sleep_parse_handling():
     assert not actions.sleep.SleepAction().parse("THISHSOULDFAIL", logger)
 
     assert actions.sleep.SleepAction().parse("10.5", logger)
+
+
+def test_trace_parse_handling():
+    """
+    Tests that the sleep action handles bad parsing.
+    """
+
+    print("Testing incorrect parsing:")
+    assert not actions.trace.TraceAction().parse("5:4", logger)
+    assert not actions.trace.TraceAction().parse("THISHOULDFAIL", logger)
