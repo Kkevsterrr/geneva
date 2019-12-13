@@ -57,7 +57,7 @@ def test_run():
     packets = strat4.act_on_packet(p1, logger)
 
     # Will fail with scapy 2.4.2 if packet is reparsed
-    strat5 = actions.utils.parse("[TCP:options-eol:]-tamper{TCP:load:replace:o}(tamper{TCP:dataofs:replace:11},)-| \/", logger)
+    strat5 = actions.utils.parse("\"[TCP:options-eol:]-tamper{TCP:load:replace:o}(tamper{TCP:dataofs:replace:11},)-| \/\"", logger)
     p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
     packets = strat5.act_on_packet(p1, logger)
 
