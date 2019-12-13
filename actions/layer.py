@@ -780,8 +780,6 @@ class DNSLayer(Layer):
         if packet.haslayer("IP"):
             del packet["IP"].chksum
             del packet["IP"].len
-        if packet.haslayer("TCP"):
-            del packet["TCP"].chksum
         if packet.haslayer("UDP"):
             del packet["UDP"].chksum
             del packet["UDP"].len

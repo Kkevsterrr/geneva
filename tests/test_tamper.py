@@ -139,7 +139,6 @@ def test_parse_parameters():
         actions.tamper.TamperAction().parse("not:enough", logger)
 
 
-
 def test_corrupt():
     """
     Tests the tamper 'corrupt' primitive.
@@ -239,6 +238,12 @@ def test_decompress():
 
     # Confirm tamper didn't corrupt anything else in the IP header
     assert confirm_unchanged(packet, original, IP, [])
+
+    packet = actions.packet.Packet(IP(dst="8.8.8.8")/TCP(dport=53)/DNS(qd=DNSQR(qname="maps.google.com")))
+    original = packet.copy()
+    tamper.tamper(packet, logger)
+    assert bytes(packet) == bytes(original)
+
 
 
 def test_corrupt_chksum():
