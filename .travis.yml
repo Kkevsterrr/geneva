@@ -37,3 +37,6 @@ install:
 
 script:
     - sudo python3 -m pytest --cov=./ -sv tests/ --tb=short
+
+after_script:
+  - bash <(curl -s https://codecov.io/bash) -t 83a45966-78ce-44c2-80b3-964ecab4a53d || echo "Codecov did not collect coverage reports"
