@@ -95,7 +95,7 @@ def test_load():
     assert p2.get("IP", "chksum") == None
 
 
-def test_parse_load(log_level):
+def test_parse_load():
     """
     Tests load parsing.
     """
