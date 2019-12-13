@@ -19,10 +19,10 @@ def get_test_configs():
     """
     tests = [
             ("both", True, ['DuplicateAction', 'DropAction', 'SleepAction', 'TraceAction', 'TamperAction', 'FragmentAction']),
-            ("in", True, ['DropAction', 'TamperAction']),
+            ("in", True, ['DropAction', 'TamperAction', 'SleepAction']),
             ("out", True, ['DropAction', 'TamperAction', 'TraceAction', 'SleepAction', 'DuplicateAction', 'FragmentAction']),
             ("both", False, ['DuplicateAction', 'SleepAction', 'TamperAction', 'FragmentAction']),
-            ("in", False, ['TamperAction']),
+            ("in", False, ['TamperAction', 'SleepAction']),
             ("out", False, ['TamperAction', 'SleepAction', 'DuplicateAction', 'FragmentAction']),
     ]
     # To ensure caching is not breaking anything, double the tests
