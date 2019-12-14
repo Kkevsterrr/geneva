@@ -30,22 +30,6 @@ class ActionTree():
         self.environment_id = None
         self.ran = False
 
-    def initialize(self, num_actions, environment_id, allow_terminal=True, disabled=None):
-        """
-        Sets up this action tree with a given number of random actions.
-        Note that the returned action trees may have less actions than num_actions
-        if terminal actions are used.
-        """
-        self.environment_id = environment_id
-        self.trigger = actions.trigger.Trigger(None, None, None, environment_id=environment_id)
-        if not allow_terminal or random.random() > 0.1:
-            allow_terminal = False
-
-        for _ in range(num_actions):
-            new_action = self.get_rand_action(self.direction, disabled=disabled)
-            self.add_action(new_action)
-        return self
-
     def __iter__(self):
         """
         Sets up a preoder iterator for the tree.

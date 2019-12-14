@@ -7,7 +7,9 @@ import actions.layer
 _SUPPORTED_LAYERS = [
     actions.layer.IPLayer,
     actions.layer.TCPLayer,
-    actions.layer.UDPLayer
+    actions.layer.UDPLayer,
+    actions.layer.DNSLayer,
+    actions.layer.DNSQRLayer
 ]
 SUPPORTED_LAYERS = _SUPPORTED_LAYERS
 
@@ -64,9 +66,25 @@ class Packet():
     @staticmethod
     def _str_load(packet, protocol):
         """
-        Prints packet payload
+        Prints DNS header for now
         """
-        return str(packet[protocol].payload)
+        if packet.haslayer("DNS") and packet.haslayer("DNSQR"):
+            res = "%s:%s:%s " % (
+            packet["DNSQR"].qname.decode('utf8'),
+            str(packet["DNSQR"].qtype),
+            str(packet["DNSQR"].qclass))
+            DNS_res = ""
+            for i in range(packet["DNS"].ancount):
+                dnsrr = packet["DNS"].an[i]
+                DNS_res += " " + ':'.join([str(dnsrr.rrname.decode('utf8')),
+                               str(dnsrr.type),
+                               str(dnsrr.rclass),
+                               str(dnsrr.ttl),
+                               str(dnsrr.rdlen),
+                               str(dnsrr.rdata)])
+            return "%s %s" % (res, DNS_res)
+        else:
+            return str(packet[protocol].payload)
 
     def __bytes__(self):
         """
@@ -238,3 +256,77 @@ class Packet():
                 return layer
 
         return None
+
+    @staticmethod
+    def reset_restrictions():
+        """
+        Removes layer and field restrictions.
+        """
+        global SUPPORTED_LAYERS, _SUPPORTED_LAYERS
+
+        SUPPORTED_LAYERS = _SUPPORTED_LAYERS
+        for layer in SUPPORTED_LAYERS:
+            layer.reset_restrictions()
+
+    @staticmethod
+    def restrict_fields(logger, filter_protocols, filter_fields, disable_fields):
+        """
+        Validates input arguments. Used by evolve.py to restrict the scope
+        of this evolution.
+        """
+        global SUPPORTED_LAYERS
+
+        if not disable_fields:
+            disable_fields = []
+
+        # First, apply a field whitelist if it was requested
+        valid = []
+        if filter_fields:
+            for layer in SUPPORTED_LAYERS:
+                new_fields = []
+                for field in filter_fields:
+                    if field in layer.fields:
+                        new_fields.append(field)
+                        valid.append(field)
+                layer.fields = new_fields
+
+            if valid and logger:
+                logger.info("Strategies will only be allowed to use fields: %s" % ", ".join(list(set(valid))))
+            elif logger:
+                logger.error("None of the given fields exist in the packet headers of given protocols.")
+
+        # Apply a field blacklist if it was requested
+        for field in disable_fields:
+            for layer in SUPPORTED_LAYERS:
+                layer.fields = [f for f in layer.fields if f not in disable_fields]
+
+        if disable_fields and logger:
+            logger.info("Strategies will not be allowed to use fields %s" % ", ".join(disable_fields))
+
+        allowed_layers = []
+        # Finally, filter protocols
+        for protocol in filter_protocols:
+            allowed_layer = Packet.get_supported_protocol(protocol)
+            if not allowed_layer:
+                if logger:
+                    logger.error("%s not a supported protocol." % protocol)
+                continue
+
+            # Only keep the layer allowed if it contains allowed fields
+            if allowed_layer.fields:
+                allowed_layers.append(allowed_layer)
+
+        assert allowed_layers, "Cannot evolve with no available packet layers!"
+
+        SUPPORTED_LAYERS = allowed_layers
+
+        if logger and allowed_layers:
+            logger.info("Strategies will only be allowed to use protocols: %s" % ", ".join([l.name for l in allowed_layers]))
+
+    def dns_decompress(self, logger):
+        """
+        Performs DNS decompression, if applicable. Returns a new packet.
+        """
+        self.packet = actions.layer.DNSLayer.dns_decompress(self.packet, logger)
+        self.layers = self.setup_layers()
+        return self

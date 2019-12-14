@@ -2,7 +2,7 @@ from actions.action import Action
 
 class SleepAction(Action):
     def __init__(self, time=1, environment_id=None):
-        Action.__init__(self, "sleep", "out")
+        Action.__init__(self, "sleep", "both")
         self.terminal = False
         self.branching = False
         self.time = time

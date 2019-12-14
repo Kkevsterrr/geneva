@@ -204,22 +204,3 @@ class FragmentAction(Action):
             self.correct_order = False
 
         return True
-
-    def mutate(self, environment_id=None):
-        """
-        Mutates the fragment action - it either chooses a new segment offset,
-        switches the packet order, and/or changes whether it segments or fragments.
-        """
-        self.correct_order = self.get_rand_order()
-        self.segment = random.choice([True, True, True, False])
-        if self.segment:
-            if random.random() < 0.5:
-                self.fragsize = int(random.uniform(1, 60))
-            else:
-                self.fragsize = -1
-        else:
-            if random.random() < 0.2:
-                self.fragsize = int(random.uniform(1, 50))
-            else:
-                self.fragsize = -1
-        return self

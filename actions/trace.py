@@ -65,14 +65,15 @@ class TraceAction(Action):
         """
         Parses a string representation for this object.
         """
+        if not string:
+            return False
         try:
-            if string:
-                self.start_ttl, self.end_ttl = string.split(":")
-                self.start_ttl = int(self.start_ttl)
-                self.end_ttl = int(self.end_ttl)
-                if self.start_ttl > self.end_ttl:
-                    logger.error("Cannot use a trace with a start ttl greater than end_ttl (%d > %d)" % (self.start_ttl, self.end_ttl))
-                    return False
+            self.start_ttl, self.end_ttl = string.split(":")
+            self.start_ttl = int(self.start_ttl)
+            self.end_ttl = int(self.end_ttl)
+            if self.start_ttl > self.end_ttl:
+                logger.error("Cannot use a trace with a start ttl greater than end_ttl (%d > %d)" % (self.start_ttl, self.end_ttl))
+                return False
         except ValueError:
             logger.exception("Cannot parse ttls from given data %s" % string)
             return False
