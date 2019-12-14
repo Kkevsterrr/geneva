@@ -6,7 +6,7 @@ from scapy.all import IP, TCP, fragment
 
 
 class FragmentAction(Action):
-    def __init__(self, environment_id=None, correct_order=None, fragsize=-1, segment=True):
+    def __init__(self, environment_id=None, correct_order=None, fragsize=-1, segment=True, overlap=0):
         '''
         correct_order specifies if the fragmented packets should come in the correct order
         fragsize specifies how
@@ -17,6 +17,7 @@ class FragmentAction(Action):
         self.terminal = False
         self.fragsize = fragsize
         self.segment = segment
+        self.overlap = overlap
 
         if correct_order == None:
             self.correct_order = self.get_rand_order()
@@ -87,6 +88,9 @@ class FragmentAction(Action):
         Segments a packet into two, given the size of the first packet (0:fragsize)
         Always returns two packets, since fragment is a branching action, so if we
         are unable to segment, it will duplicate the packet.
+
+        If overlap is specified, it will select n bytes from the second packet 
+        and append them to the first, and increment the sequence number accordingly
         """
         if not packet.haslayer("TCP") or not hasattr(packet["TCP"], "load") or not packet["TCP"].load:
             return packet, packet.copy() # duplicate if no TCP or no payload to segment
@@ -101,7 +105,11 @@ class FragmentAction(Action):
             fragsize = int(len(payload)/2)
 
         # Craft new packets
-        pkt1 = IP(packet["IP"])/payload[:fragsize]
+
+        # Make sure we don't go out of bounds by choosing the min
+        overlapBytes = min(payload[fragsize:], overlap)
+        # Attach these bytes to the first packet
+        pkt1 = IP(packet["IP"])/payload[:fragsize + overlapBytes]
         pkt2 = IP(packet["IP"])/payload[fragsize:]
 
         # We cannot rely on scapy's native parsing here - if a previous action has changed the
