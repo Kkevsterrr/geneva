@@ -67,8 +67,6 @@ class GenericEngine(ABC):
         self.server_port = server_port
         self.seen_packets = []
         # Set up the directory and ID for logging
-        if not output_directory:
-            output_directory = "trials"
         actions.utils.setup_dirs(output_directory)
         if not environment_id:
             environment_id = actions.utils.get_id()
@@ -452,9 +450,8 @@ class LinuxEngine(GenericEngine):
         # Run the given strategy
         packets = self.strategy.act_on_packet(packet, self.logger, direction="in")
 
-        # GFW will send RA packets to disrupt a TCP stream
+        # Censors will often send RA packets to disrupt a TCP stream - record this
         if packet.haslayer("TCP") and packet.get("TCP", "flags") == "RA":
-            self.logger.debug("Detected GFW censorship - strategy failed.")
             self.censorship_detected = True
 
         # Branching is disabled for the in direction, so we can only ever get

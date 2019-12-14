@@ -13,9 +13,3 @@ class DuplicateAction(Action):
         """
         logger.debug("  - Duplicating given packet %s" % str(packet))
         return packet, packet.copy()
-
-    def mutate(self, environment_id=None):
-        """
-        Swaps its left and right child
-        """
-        self.left, self.right = self.right, self.left
