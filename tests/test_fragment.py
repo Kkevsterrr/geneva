@@ -292,3 +292,11 @@ def test_overlapping_segment_out_of_bounds():
 
     assert packet1["TCP"].seq == 100, "First packet sequence number incorrect"
     assert packet2["TCP"].seq == 109, "Second packet sequence number incorrect"
+
+def test_overlapping_segmentation_parse():
+    """
+    Basic test for parsing overlapping segments.
+    """
+    
+    fragment = actions.fragment.FragmentAction(correct_order=False, fragsize=2, segment=True, overlap=3)
+    assert str(fragment) == "fragment{tcp:2:False:3}", "Fragment returned incorrect string representation: %s" % str(fragment)
