@@ -107,7 +107,7 @@ class FragmentAction(Action):
         # Craft new packets
 
         # Make sure we don't go out of bounds by choosing the min
-        overlapBytes = min(payload[fragsize:], overlap)
+        overlapBytes = min(len(payload[fragsize:]), self.overlap)
         # Attach these bytes to the first packet
         pkt1 = IP(packet["IP"])/payload[:fragsize + overlapBytes]
         pkt2 = IP(packet["IP"])/payload[fragsize:]
@@ -155,10 +155,15 @@ class FragmentAction(Action):
         Returns a string representation with the fragsize
         """
         s = Action.__str__(self)
-        if self.segment:
-            s += "{" + "tcp" + ":" + str(self.fragsize)  + ":" + str(self.correct_order) + "}"
+        if self.overlap == 0:
+            ending = "}"
         else:
-            s += "{" + "ip" + ":"+ str(self.fragsize)  + ":" + str(self.correct_order) + "}"
+            ending = ":" + str(self.overlap) + "}"
+
+        if self.segment:
+            s += "{" + "tcp" + ":" + str(self.fragsize)  + ":" + str(self.correct_order) + ending
+        else:
+            s += "{" + "ip" + ":"+ str(self.fragsize)  + ":" + str(self.correct_order) + ending
         return s
 
     def parse(self, string, logger):
@@ -177,22 +182,36 @@ class FragmentAction(Action):
         num_parameters = string.count(":")
 
         # If num_parameters is greater than 2, it's not a valid fragment action
-        if num_parameters != 2:
-            msg = "Cannot parse fragment action %s" % string
-            logger.error(msg)
-            raise Exception(msg)
-        else:
+        if num_parameters == 2:
             params = string.split(":")
             seg, fragsize, correct_order = params
+            overlap = 0
             if "tcp" in seg:
                 self.segment = True
             else:
                 self.segment = False
 
+        elif num_parameters == 3:
+            params = string.split(":")
+            seg, fragsize, correct_order, overlap = params
+            if overlap.endswith("}"):
+                overlap = overlap[:-1] # Chop off trailing }
+            if "tcp" in seg:
+                self.segment = True
+            else:
+                self.segment = False
+        
+        else:
+            msg = "Cannot parse fragment action %s" % string
+            logger.error(msg)
+            raise Exception(msg)
+
         try:
             # Try to convert to int
             self.fragsize = int(fragsize)
-        except ValueError:
+            self.overlap = int(overlap)
+        except ValueError as e:
+            print(e)
             msg = "Cannot parse fragment action %s" % string
             logger.error(msg)
             raise Exception(msg)
