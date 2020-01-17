@@ -30,7 +30,7 @@ BASEPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class Engine():
-    def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
+    def __init__(self, server_port, string_strategy, server_side=False, environment_id=None, output_directory="trials", log_level="info"):
         self.server_port = server_port
         self.seen_packets = []
         # Set up the directory and ID for logging
@@ -47,6 +47,7 @@ class Engine():
                                                environment_id,
                                                log_level=log_level)
         self.output_directory = output_directory
+        self.server_side = server_side
 
         # Used for conditional context manager usage
         self.strategy = actions.utils.parse(string_strategy, self.logger)
@@ -124,6 +125,8 @@ class Engine():
         self.logger.debug("Configuring iptables rules")
 
         port1, port2 = "dport", "sport"
+        if self.server_side:
+            port1, port2 = "sport", "dport"
 
         out_chain = "OUTPUT"
         in_chain = "INPUT"
