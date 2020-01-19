@@ -306,6 +306,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser(description='The engine that runs a given strategy.')
     parser.add_argument('--server-port', type=int, action='store', required=True)
+    parser.add_argument('--server-side', action='store_true', help="If this strategy is running on the server side of a connection")
     parser.add_argument('--environment-id', action='store', help="ID of the current strategy under test. If not provided, one will be generated.")
     parser.add_argument('--strategy', action='store', help="Strategy to deploy")
     parser.add_argument('--output-directory', default="trials", action='store', help="Where to output logs, captures, and results. Defaults to trials/.")
@@ -326,6 +327,7 @@ def main(args):
                      args["strategy"],
                      environment_id=args.get("environment_id"),
                      output_directory = args.get("output_directory"),
+                     server_side=args.get("server_side"),
                      log_level=args["log"])
         eng.initialize_nfqueue()
         while True:
