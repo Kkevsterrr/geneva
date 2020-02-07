@@ -85,4 +85,5 @@ class Strategy(object):
         # If no action tree was applicable, send the packet unimpeded
         if not ran:
             packets_to_send = [packet]
+        
         return packets_to_send

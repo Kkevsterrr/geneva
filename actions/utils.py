@@ -14,6 +14,7 @@ import actions.trigger
 import actions.packet
 
 from scapy.all import TCP, IP, UDP, rdpcap
+from actions.http import HTTPRequest
 import netifaces
 
 
@@ -153,6 +154,8 @@ def string_to_protocol(protocol):
         return IP
     elif protocol.upper() == "UDP":
         return UDP
+    elif protocol.upper() == "HTTPREQUEST":
+        return HTTPRequest
 
 
 def get_id():

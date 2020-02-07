@@ -6,6 +6,8 @@ import urllib.parse
 
 from scapy.all import IP, RandIP, UDP, DNS, DNSQR, Raw, TCP, fuzz
 
+from actions.http import HTTPRequest
+
 
 class Layer():
     """
@@ -600,6 +602,81 @@ class UDPLayer(Layer):
             'load' : self.gen_load,
         }
 
+
+class HTTPRequestLayer(Layer):
+    """
+    Defines an interface to access parsed HTTP fields
+    """
+
+    name = "HTTPRequest"
+    protocol = HTTPRequest
+
+    _fields = [
+        "Method",
+        "Path",
+        "Http_Version",
+        "Host"
+    ]
+    fields = _fields
+    
+    def __init__(self, layer):
+        """
+        Initializes the HTTP layer.
+        """
+        Layer.__init__(self, layer)
+        self.request = HTTPRequest(bytes(layer)) # TODO: I dont like this
+        self.getters = {
+            'load' : self.get_load,
+        }
+        self.setters = {
+            'load' : self.set_load,
+        }
+        self.generators = {
+            'load' : self.gen_load,
+        }
+
+    def get(self, field):
+        """
+        Override get, since the HTTPRequest doesn't immediately make its fields known
+        """
+        assert field in self.fields
+        if field in self.getters:
+            return self.getters[field](field)
+        return getattr(self.request, field)
+
+    def set(self, packet, field, value):
+        """
+        Override get, since the HTTPRequest doesn't immediately make its fields known
+        """
+        print('entering set, but I dont like this')
+        print(packet)
+        print(field)
+        print(value)
+        assert field in self.fields
+        base = field.split("-")[0]
+        if field in self.setters:
+             self.setters[field](packet, field, value)
+
+        # Dual field accessors are fields that require two pieces of information
+        # to retrieve them (for example, "options-eol"). These are delimited by
+        # a dash "-".
+        elif "-" in field and base in self.setters:
+            self.setters[base](packet, field, value)
+        else:
+            setattr(self.layer, field, value)
+
+        # Request the packet be reparsed to confirm the value is stable
+        # XXX Temporarily disabling the reconstitution check due to scapy bug (#2034)
+        #assert bytes(self.protocol(bytes(self.layer))) == bytes(self.layer)
+
+
+    @classmethod
+    def name_matches(cls, name):
+        """
+        Override the name parsing to check for HTTP REQUEST here.
+        """
+        return name.upper() in ["HTTPREQUEST"]
+ 
 
 class DNSLayer(Layer):
     """

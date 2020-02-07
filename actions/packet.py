@@ -3,13 +3,18 @@ import random
 
 import actions.layer
 
+from scapy.layers.http import HTTP as ScapyHTTP, HTTPRequest as ScapyHTTPRequest
+from scapy.all import IP, TCP
+from actions.http import HTTPRequest as GenevaHTTPRequest
 
 _SUPPORTED_LAYERS = [
     actions.layer.IPLayer,
     actions.layer.TCPLayer,
     actions.layer.UDPLayer,
     actions.layer.DNSLayer,
-    actions.layer.DNSQRLayer
+    actions.layer.DNSQRLayer,
+    #actions.layer.HTTPLayer,
+    actions.layer.HTTPRequestLayer
 ]
 SUPPORTED_LAYERS = _SUPPORTED_LAYERS
 
@@ -23,7 +28,13 @@ class Packet():
         """
         Initializes the packet object.
         """
-        self.packet = packet
+        if(ScapyHTTPRequest in packet.layers()):
+            # We have a ScapyHTTPRequest. Instead, let's convert to our HttpRequest.
+            # Overwrite the current ScapyHTTPRequest with a GenevaHTTPRequest
+            self.packet = packet
+            self.packet[ScapyHTTPRequest] = GenevaHTTPRequest(bytes(packet[ScapyHTTPRequest]))
+        else:
+            self.packet = packet
         self.layers = self.setup_layers()
         self.sleep = 0
 
@@ -131,7 +142,7 @@ class Packet():
         """
         layers = {}
         for layer in self.read_layers():
-            layers[layer.name.upper()] = layer
+            layers[layer.name] = layer
         return layers
 
     def copy(self):
@@ -179,7 +190,11 @@ class Packet():
         if self.haslayer("TCP"):
             del self.packet["TCP"].chksum
 
-        return self.layers[str_protocol].set(self.packet, field, value)
+        lay = self.layers[str_protocol].set(self.packet, field, value)
+
+        print(lay)
+
+        return lay
 
     def get(self, str_protocol, field):
         """
