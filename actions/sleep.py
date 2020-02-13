@@ -11,7 +11,7 @@ class SleepAction(Action):
         """
         The sleep action simply passes along the packet it was given with an instruction for how long the engine should sleep before sending it.
         """
-        logger.debug("  - Adding %d sleep to given packet." % self.time)
+        logger.debug("  - Adding %g sleep to given packet." % self.time)
         packet.sleep = self.time
         return packet, None
 
@@ -20,7 +20,7 @@ class SleepAction(Action):
         Returns a string representation.
         """
         s = Action.__str__(self)
-        s += "{%d}" % self.time
+        s += "{%g}" % self.time
         return s
 
     def parse(self, string, logger):
