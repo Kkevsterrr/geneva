@@ -1,5 +1,6 @@
+import logging
+
 from scapy.all import IP, TCP
-import evolve
 import actions.utils
 import actions.strategy
 import actions.packet
@@ -9,12 +10,11 @@ import sys
 sys.path.append("..")
 
 
-def test_basic_sleep(log_level):
+def test_basic_sleep():
     """
     Tests the sleep action primitive
     """
-    logger = evolve.logger
-    evolve.set_logger(log_level)
+    logger = logging.getLogger("test")
 
     sleep = actions.sleep.SleepAction(.5)
     assert str(sleep) == "sleep{0.5}", "Sleep returned incorrect string representation: %s" % str(sleep)
@@ -24,12 +24,11 @@ def test_basic_sleep(log_level):
 
     assert packet1.sleep == .5, "Packet had wrong sleep value"
 
-def test_sleep_str_parse(log_level):
+def test_sleep_str_parse():
     """
     Tests stringing and parsing a sleep action with a float sleep time
     """
-    logger = evolve.logger
-    evolve.set_logger(log_level)
+    logger = logging.getLogger("test")
 
     strat = actions.utils.parse("[TCP:flags:A]-sleep{0.5}-|", logger)
 
