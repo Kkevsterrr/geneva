@@ -128,8 +128,8 @@ class WindowsEngine(GenericEngine):
 
         self.logger.debug("Initializing Divert")
 
-        self.divert = pydivert.WinDivert("tcp.DstPort == %d || tcp.SrcPort == %d" % (int(self.server_port), int(self.server_port)))
-        self.divert.open()
+        self.divert = pydivert.WinDivert("tcp.DstPort == %d || tcp.SrcPort == %d || udp.DstPort == %d || udp.SrcPort == %d"  \
+            % (int(self.server_port), int(self.server_port), int(self.server_port), int(self.server_port)))self.divert.open()
         self.divert_thread = threading.Thread(target=self.run_divert)
         self.divert_thread.start()
 
