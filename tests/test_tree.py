@@ -7,6 +7,7 @@ import actions.drop
 import actions.tamper
 import actions.duplicate
 import actions.utils
+import platform
 
 
 def test_init():
@@ -130,6 +131,8 @@ def test_pretty_print():
     """
     Print complex tree, although difficult to test
     """
+    if platform.system() == "Windows":
+        return
     t = actions.trigger.Trigger("field", "flags", "TCP")
     a = actions.tree.ActionTree("out", trigger=t)
     tamper = actions.tamper.TamperAction(field="flags", tamper_type="replace", tamper_value="S")
