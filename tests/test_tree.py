@@ -131,7 +131,7 @@ def test_pretty_print():
     """
     Print complex tree, although difficult to test
     """
-    if platform.system() == "Windows":
+    if os.name == 'nt':
         return
     t = actions.trigger.Trigger("field", "flags", "TCP")
     a = actions.tree.ActionTree("out", trigger=t)

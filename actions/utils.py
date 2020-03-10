@@ -183,7 +183,7 @@ def get_interface():
     """
     if os.name == 'nt':
         # Windows code
-        return # TODO: Fix this 
+        return
     else:
         ifaces = netifaces.interfaces()
         for iface in ifaces:

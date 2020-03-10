@@ -28,10 +28,7 @@ import actions.utils
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 
-if os.name == 'nt':
-    WINDOWS = True
-else:
-    WINDOWS = False
+WINDOWS = (os.name == 'nt')
 
 if WINDOWS:
     import pydivert
@@ -41,21 +38,21 @@ else:
 
 from abc import ABC, abstractmethod
 
-def Engine(server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
+def Engine(server_port, string_strategy, **kwargs):
     # Factory function to dynamically choose which engine to use.
     # Users should initialize an Engine using this.
     if WINDOWS:
         eng = WindowsEngine(server_port, 
                     string_strategy,
-                    environment_id=environment_id, 
-                    output_directory=output_directory, 
-                    log_level=log_level)
+                    environment_id=kwargs.get("environment_id", None), 
+                    output_directory=kwargs.get("output_directory", "trials"), 
+                    log_level=kwargs.get("log_level", "info"))
     else:
         eng = LinuxEngine(server_port, 
                     string_strategy,
-                    environment_id=environment_id, 
-                    output_directory=output_directory, 
-                    log_level=log_level)
+                    environment_id=kwargs.get("environment_id", None), 
+                    output_directory=kwargs.get("output_directory", "trials"), 
+                    log_level=kwargs.get("log_level", "info"))
 
     return eng
 
@@ -109,6 +106,7 @@ class GenericEngine(ABC):
         """
         self.shutdown()
 
+
 class WindowsEngine(GenericEngine):
     def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info"):
         super().__init__(server_port, string_strategy, environment_id=environment_id, output_directory=output_directory, log_level=log_level)
@@ -129,7 +127,8 @@ class WindowsEngine(GenericEngine):
         self.logger.debug("Initializing Divert")
 
         self.divert = pydivert.WinDivert("tcp.DstPort == %d || tcp.SrcPort == %d || udp.DstPort == %d || udp.SrcPort == %d"  \
-            % (int(self.server_port), int(self.server_port), int(self.server_port), int(self.server_port)))self.divert.open()
+            % (int(self.server_port), int(self.server_port), int(self.server_port), int(self.server_port)))
+        self.divert.open()
         self.divert_thread = threading.Thread(target=self.run_divert)
         self.divert_thread.start()
 
@@ -499,7 +498,7 @@ def main(args):
             strategy = LIBRARY[int(args["strategy_index"])][0]
         else:
             # Default to first strategy
-            strategy = LIBRARY[0][0]
+            strategy = LIBRARY[6][0]
         eng = Engine(args["server_port"],
                         strategy,
                         environment_id=args.get("environment_id"),
