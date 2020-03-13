@@ -1,14 +1,12 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@0.2.1
+  python: circleci/windows@2.4.0
 
 jobs:
   build-and-test:
-    executor: python/default
     steps:
       - checkout
-      - python/load-cache
       - run:
           command: pip install --user -r requirements_windows.txt
           name: Pip install
