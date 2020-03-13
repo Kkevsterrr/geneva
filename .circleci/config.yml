@@ -5,7 +5,9 @@ orbs:
 
 jobs:
   build-and-test:
-    executor: win/default
+    executor: 
+      name: win/default
+      size: "medium"
     steps:
       - checkout
       - run:
