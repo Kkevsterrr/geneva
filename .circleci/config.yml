@@ -5,7 +5,7 @@ orbs:
 
 jobs:
   build-and-test:
-    executor: default
+    executor: windows/default
     steps:
       - checkout
       - run:
