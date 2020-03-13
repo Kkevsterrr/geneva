@@ -1,5 +1,6 @@
 scapy==2.4.3
 requests
+pytest
 netifaces
 cryptography==2.5
 requests
