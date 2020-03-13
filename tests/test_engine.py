@@ -8,6 +8,7 @@ sys.path.append(BASEPATH)
 
 import engine
 
+
 def test_engine():
     """
     Basic engine test
@@ -35,7 +36,7 @@ def test_engine_sleep():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="info") as eng:
-        os.system("curl -s http://example.com")
+        sp.check_call("curl -s http://example.com", shell=True)
 
     # Strategy to use in opposite direction
     strategy = "\/ [TCP:flags:SA]-sleep{1}-|"
@@ -43,7 +44,6 @@ def test_engine_sleep():
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
         sp.check_call("curl -s http://example.com", shell=True)
-
 
 
 def test_engine_trace():
@@ -57,7 +57,11 @@ def test_engine_trace():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
-        os.system("curl -m 5 http://example.com?q=ultrasurf")
+        try:
+            sp.check_call("curl -m 5 http://example.com", shell=True)
+        except sp.CalledProcessError as exc:
+            print("Expecting timeout exception")
+            print(exc)
 
 
 def test_engine_drop():
@@ -71,5 +75,8 @@ def test_engine_drop():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
-        os.system("curl -m 3 http://example.com?q=ultrasurf")
-
+        try:
+            sp.check_call("curl -m 3 http://example.com")
+        except sp.CalledProcessError as exc:
+            print("Expecting timeout exception")
+            print(exc)
