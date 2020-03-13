@@ -4,21 +4,22 @@ Engine
 Given a strategy and a server port, the engine configures NFQueue
 so the strategy can run on the underlying connection.
 """
-
 import argparse
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+
 import os
 import socket
 import subprocess
 import threading
 import time
 
-import netfilterqueue
-
 from scapy.layers.inet import IP
 from scapy.utils import wrpcap
 from scapy.config import conf
+from scapy.all import send, Raw
+
+from library import LIBRARY
 
 socket.setdefaulttimeout(1)
 
@@ -28,11 +29,50 @@ import actions.utils
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 
+WINDOWS = (os.name == 'nt')
 
-class Engine():
-    def __init__(self, server_port, string_strategy, server_side=False, environment_id=None, output_directory="trials", log_level="info"):
+if WINDOWS:
+    import pydivert
+    from pydivert.consts import Direction
+else:
+    import netfilterqueue
+
+
+from abc import ABC, abstractmethod
+
+
+def Engine(server_port, string_strategy, **kwargs):
+    """
+    Factory function to dynamically choose which engine to use.
+    Users should initialize an Engine using this.
+    """
+    if WINDOWS:
+        eng = WindowsEngine(server_port,
+                    string_strategy,
+                    environment_id=kwargs.get("environment_id", None),
+                    output_directory=kwargs.get("output_directory", "trials"),
+                    log_level=kwargs.get("log_level", "info"))
+    else:
+        eng = LinuxEngine(server_port,
+                    string_strategy,
+                    environment_id=kwargs.get("environment_id", None),
+                    output_directory=kwargs.get("output_directory", "trials"),
+                    log_level=kwargs.get("log_level", "info"))
+
+    return eng
+
+
+class GenericEngine(ABC):
+    """
+    Abstract Base Class defining an engine
+    Users should follow the contract laid out here to create custom engines.
+    """
+    def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info", server_side=False):
+        # Do common setup
         self.server_port = server_port
         self.seen_packets = []
+        self.server_side = server_side
+        self.censorship_detected = False
         # Set up the directory and ID for logging
         actions.utils.setup_dirs(output_directory)
         if not environment_id:
@@ -47,10 +87,175 @@ class Engine():
                                                environment_id,
                                                log_level=log_level)
         self.output_directory = output_directory
-        self.server_side = server_side
 
         # Used for conditional context manager usage
         self.strategy = actions.utils.parse(string_strategy, self.logger)
+        self.censorship_detected = False
+
+    @abstractmethod
+    def initialize(self):
+        """
+        Initialize the Engine. Users should call this directly.
+        """
+        pass
+
+    @abstractmethod
+    def shutdown(self):
+        """
+        Clean up & shutdown the engine. Users should call this directly.
+        """
+        pass
+
+    def __enter__(self):
+        """
+        Allows the engine to be used as a context manager; simply launches the
+        engine.
+        """
+        self.initialize()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        """
+        Allows the engine to be used as a context manager; simply stops the engine
+        """
+        self.shutdown()
+
+
+class WindowsEngine(GenericEngine):
+    """
+    Windows build of the Engine. Uses WinDivert to control traffic.
+    """
+    def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info", server_side=False):
+        """
+        Perform common initialization and setup variables for WinDivert initialization later on.
+        """
+        super().__init__(server_port, string_strategy, environment_id=environment_id, output_directory=output_directory, log_level=log_level, server_side=server_side)
+
+        # Instantialize a PyDivert channel, which we will use to redirect packets
+        self.divert = None
+        self.divert_thread = None
+        self.divert_thread_started = False
+        self.interface = None # Using lazy evaluating as divert should know this
+
+    def initialize(self):
+        """
+        Initializes Divert such that all packets for the connection will come through us
+        """
+
+        self.logger.debug("Engine created with strategy %s (ID %s) to port %s",
+                          str(self.strategy).strip(), self.environment_id, self.server_port)
+
+        self.logger.debug("Initializing Divert")
+
+        self.divert = pydivert.WinDivert("tcp.DstPort == %d || tcp.SrcPort == %d || udp.DstPort == %d || udp.SrcPort == %d"  \
+            % (int(self.server_port), int(self.server_port), int(self.server_port), int(self.server_port)))
+        self.divert.open()
+        self.divert_thread = threading.Thread(target=self.run_divert)
+        self.divert_thread.start()
+
+        maxwait = 100 # 100 time steps of 0.01 seconds for a max wait of 10 seconds
+        i = 0
+        # Give Divert time to startup, since it's running in background threads
+        # Block the main thread until this is done
+        while not self.divert_thread_started and i < maxwait:
+            time.sleep(0.1)
+            i += 1
+        self.logger.debug("Divert Initialized after %d", int(i))
+
+    def shutdown(self):
+        """
+        Closes the divert connection
+        """
+        if self.divert:
+            self.divert.close()
+            self.divert = None
+
+    def run_divert(self):
+        """
+        Runs actions on packets
+        """
+        if self.divert:
+            self.divert_thread_started = True
+
+        for packet in self.divert:
+            if not self.interface:
+                self.interface = packet.interface
+            if packet.is_outbound:
+                # Send to outbound action tree, if any
+                self.handle_outbound_packet(packet)
+
+            elif packet.is_inbound:
+                # Send to inbound action tree, if any
+                self.handle_inbound_packet(packet)
+
+    def mysend(self, packet, dir):
+        """
+        Helper scapy sending method. Expects a Geneva Packet input.
+        """
+        try:
+            self.logger.debug("Sending packet %s", str(packet))
+            # Convert the packet to a bytearray so memoryview can edit the underlying memory
+            pack = bytearray(bytes(packet.packet))
+            # Don't recalculate checksum since sometimes we will have already changed it
+            self.divert.send(pydivert.Packet(memoryview(pack), self.interface, dir), recalculate_checksum=False)
+        except Exception:
+            self.logger.exception("Error in engine mysend.")
+
+    def handle_outbound_packet(self, divert_packet):
+        """
+        Handles outbound packets
+        """
+        packet = actions.packet.Packet(IP(divert_packet.raw.tobytes()))
+        self.logger.debug("Received outbound packet %s", str(packet))
+
+        # Record this packet for a .pcap later
+        self.seen_packets.append(packet)
+
+        packets_to_send = self.strategy.act_on_packet(packet, self.logger, direction="out")
+
+        # Send all of the packets we've collected to send
+        for out_packet in packets_to_send:
+            self.mysend(out_packet, Direction.OUTBOUND)
+
+    def handle_inbound_packet(self, divert_packet):
+        """
+        Handles inbound packets. Process the packet and forward it to the strategy if needed.
+        """
+        packet = actions.packet.Packet(IP(divert_packet.raw.tobytes()))
+
+        self.seen_packets.append(packet)
+
+        self.logger.debug("Received packet: %s", str(packet))
+
+        # Run the given strategy
+        packets = self.strategy.act_on_packet(packet, self.logger, direction="in")
+
+        # Censors will send RA packets to disrupt a TCP stream; record this in case an application wants to know
+        if packet.haslayer("TCP") and packet.get("TCP", "flags") == "RA":
+            self.censorship_detected = True
+
+        # Branching is disabled for the in direction, so we can only ever get
+        # back 1 or 0 packets. If zero, return and do not send packet.
+        if not packets:
+            return
+
+        # If the strategy requested us to sleep before accepting on this packet, do so here
+        if packets[0].sleep:
+            time.sleep(packets[0].sleep)
+
+        # Accept the modified packet
+        self.mysend(packets[0], Direction.INBOUND)
+
+
+class LinuxEngine(GenericEngine):
+    """
+    Defines the Linux Geneva Engine. Uses netfilterqueue to capture and control packets.
+    """
+    def __init__(self, server_port, string_strategy, environment_id=None, output_directory="trials", log_level="info", server_side=False):
+        """
+        Performs common initialization, and then sets up for netfilterqueue initialization later.
+        """
+        super().__init__(server_port, string_strategy, environment_id=environment_id, output_directory=output_directory, log_level=log_level, server_side=server_side)
         # Setup variables used by the NFQueue system
         self.out_nfqueue_started = False
         self.in_nfqueue_started = False
@@ -61,26 +266,12 @@ class Engine():
         self.in_nfqueue_socket = None
         self.out_nfqueue_thread = None
         self.in_nfqueue_thread = None
-        self.censorship_detected = False
+
         # Specifically define an L3Socket to send our packets. This is an optimization
         # for scapy to send packets more quickly than using just send(), as under the hood
         # send() creates and then destroys a socket each time, imparting a large amount
         # of overhead.
         self.socket = conf.L3socket(iface=actions.utils.get_interface())
-
-    def __enter__(self):
-        """
-        Allows the engine to be used as a context manager; simply launches the
-        engine.
-        """
-        self.initialize_nfqueue()
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        """
-        Allows the engine to be used as a context manager; simply stops the engine
-        """
-        self.shutdown_nfqueue()
 
     def mysend(self, packet):
         """
@@ -152,7 +343,7 @@ class Engine():
                 subprocess.check_call(cmd.split(), stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=60)
         return cmds
 
-    def initialize_nfqueue(self):
+    def initialize(self):
         """
         Initializes the nfqueue for input and output forests.
         """
@@ -195,7 +386,7 @@ class Engine():
             i += 1
         self.logger.debug("NFQueue Initialized after %d", int(i))
 
-    def shutdown_nfqueue(self):
+    def shutdown(self):
         """
         Shutdown nfqueue.
         """
@@ -299,7 +490,6 @@ class Engine():
         # Accept the modified packet
         nfpacket.accept()
 
-
 def get_args():
     """
     Sets up argparse and collects arguments.
@@ -309,6 +499,7 @@ def get_args():
     parser.add_argument('--server-side', action='store_true', help="If this strategy is running on the server side of a connection")
     parser.add_argument('--environment-id', action='store', help="ID of the current strategy under test. If not provided, one will be generated.")
     parser.add_argument('--strategy', action='store', help="Strategy to deploy")
+    parser.add_argument('--strategy-index', action='store', help="Strategy to deploy, specified by index in the library")
     parser.add_argument('--output-directory', default="trials", action='store', help="Where to output logs, captures, and results. Defaults to trials/.")
     parser.add_argument('--log', action='store', default="debug",
                         choices=("debug", "info", "warning", "critical", "error"),
@@ -317,24 +508,31 @@ def get_args():
     args = parser.parse_args()
     return args
 
-
 def main(args):
     """
     Kicks off the engine with the given arguments.
     """
+
     try:
+        if args["strategy"]:
+            strategy = args["strategy"]
+        elif args["strategy_index"]:
+            strategy = LIBRARY[int(args["strategy_index"])][0]
+        else:
+            # Default to first strategy
+            strategy = LIBRARY[6][0]
         eng = Engine(args["server_port"],
-                     args["strategy"],
-                     environment_id=args.get("environment_id"),
-                     output_directory = args.get("output_directory"),
-                     server_side=args.get("server_side"),
-                     log_level=args["log"])
-        eng.initialize_nfqueue()
+                        strategy,
+                        environment_id=args.get("environment_id"),
+                        output_directory = args.get("output_directory"),
+                        log_level=args["log"])
+        eng.initialize()
         while True:
             time.sleep(0.5)
+    except Exception as e:
+        print(e)
     finally:
-        eng.shutdown_nfqueue()
-
+        eng.shutdown()
 
 if __name__ == "__main__":
     main(vars(get_args()))

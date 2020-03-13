@@ -181,11 +181,15 @@ def get_interface():
     """
     Chooses an interface on the machine to use for socket testing.
     """
-    ifaces = netifaces.interfaces()
-    for iface in ifaces:
-        if "lo" in iface:
-            continue
-        info = netifaces.ifaddresses(iface)
-        # Filter for IPv4 addresses
-        if netifaces.AF_INET in info:
-            return iface
+    if os.name == 'nt':
+        # Windows code
+        return
+    else:
+        ifaces = netifaces.interfaces()
+        for iface in ifaces:
+            if "lo" in iface:
+                continue
+            info = netifaces.ifaddresses(iface)
+            # Filter for IPv4 addresses
+            if netifaces.AF_INET in info:
+                return iface

@@ -158,12 +158,14 @@ def test_pretty_print():
     a.add_action(duplicate)
     correct_string = "TCP:flags:0\nduplicate\n├── duplicate\n│   ├── tamper{TCP:flags:replace:S}\n│   │   └──  ===> \n│   └── drop\n└── duplicate\n    ├── duplicate\n    │   ├── duplicate\n    │   │   ├── drop\n    │   │   └── tamper{TCP:flags:replace:R}\n    │   │       └──  ===> \n    │   └── drop\n    └── drop"
     assert a.pretty_print() == correct_string
-    assert a.pretty_print(visual=True)
-    assert os.path.exists("tree.png")
-    os.remove("tree.png")
-    a.parse("[TCP:flags:0]-|", logging.getLogger("test"))
-    a.pretty_print(visual=True) # Empty action tree
-    assert not os.path.exists("tree.png")
+    # Only works on Linux
+    if os.name != "nt":
+        assert a.pretty_print(visual=True)
+        assert os.path.exists("tree.png")
+        os.remove("tree.png")
+        a.parse("[TCP:flags:0]-|", logging.getLogger("test"))
+        a.pretty_print(visual=True) # Empty action tree
+        assert not os.path.exists("tree.png")
 
 def test_pretty_print_order():
     """
