@@ -13,7 +13,7 @@ jobs:
           command: pip install --user -r requirements_windows.txt
           name: Pip install
       - run:
-          command: python -m pytest --cov=./ -sv tests/ --tb=short
+          command: python -m pytest -sv tests/ --tb=short
           name: Test
 
 workflows:
