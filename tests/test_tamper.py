@@ -207,7 +207,7 @@ def test_decompress():
     original = packet.copy()
     tamper.tamper(packet, logger)
     assert bytes(packet["DNS"]) == b'\x00\x00\x01\x00\x00\x02\x00\x00\x00\x00\x00\x00\x07minghui\xc0\x1a\x00\x01\x00\x01\x02ca\x00\x00\x01\x00\x01'
-    resp = sr1(packet.packet)
+    resp = sr1(packet.packet, timeout=5)
     assert resp["DNS"]
     assert resp["DNS"].rcode != 1
     assert resp["DNSQR"]
@@ -219,7 +219,7 @@ def test_decompress():
     original = packet.copy()
     tamper.tamper(packet, logger)
     assert bytes(packet["DNS"]) == b'\x00\x00\x01\x00\x00\x02\x00\x00\x00\x00\x00\x00\x04maps\xc0\x17\x00\x01\x00\x01\x06google\x03com\x00\x00\x01\x00\x01'
-    resp = sr1(packet.packet)
+    resp = sr1(packet.packet, timeout=5)
     assert resp["DNS"]
     assert resp["DNS"].rcode != 1
     assert resp["DNSQR"]
