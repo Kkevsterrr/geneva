@@ -166,9 +166,16 @@ class WindowsEngine(GenericEngine):
         """
         Closes the divert connection
         """
+        self.logger.debug("Shutting down Divert engine...")
         if self.divert:
+            self.logger.debug("Closing Divert engine")
             self.divert.close()
             self.divert = None
+
+        if self.divert_thread:
+            self.logger.debug("Joining divert thread")
+            self.divert_thread.join()
+        self.logger.debug("Shutdown complete.")
 
     def run_divert(self):
         """
