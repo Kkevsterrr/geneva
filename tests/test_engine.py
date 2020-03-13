@@ -1,4 +1,5 @@
 import os
+import subprocess as sp
 import sys
 
 # Add the path to the engine so we can import it
@@ -11,6 +12,8 @@ def test_engine():
     """
     Basic engine test
     """
+    print("Checking if the internet is accessible...")
+    sp.check_call("curl -s http://example.com", shell=True)
     # Port to run the engine on
     port = 80
     # Strategy to use
@@ -18,7 +21,7 @@ def test_engine():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
-        os.system("curl http://example.com?q=ultrasurf")
+        sp.check_call("curl http://example.com?q=ultrasurf", shell=True)
 
 
 def test_engine_sleep():
@@ -39,7 +42,7 @@ def test_engine_sleep():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
-        os.system("curl -s http://example.com")
+        sp.check_call("curl -s http://example.com", shell=True)
 
 
 
