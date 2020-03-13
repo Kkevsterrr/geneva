@@ -32,14 +32,14 @@ def test_engine_sleep():
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="info") as eng:
-        os.system("curl http://example.com?q=ultrasurf")
+        os.system("curl -s http://example.com")
 
     # Strategy to use in opposite direction
     strategy = "\/ [TCP:flags:SA]-sleep{1}-|"
 
     # Create the engine in debug mode
     with engine.Engine(port, strategy, log_level="debug") as eng:
-        os.system("curl http://example.com?q=ultrasurf")
+        os.system("curl -s http://example.com")
 
 
 
