@@ -9,7 +9,9 @@ jobs:
     steps:
       - checkout
       - python/load-cache
-      - python/install-deps
+      - run
+          command: pip install --user -r requirements_windows.txt
+          name: Pip install
       - python/save-cache
       - run:
           command: ./manage.py test
