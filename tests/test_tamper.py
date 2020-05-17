@@ -1,11 +1,12 @@
 import copy
-import logging
 import sys
 import pytest
 import random
 # Include the root of the project
 sys.path.append("..")
 
+import evolve
+import evaluator
 import actions.strategy
 import actions.packet
 import actions.utils
@@ -15,10 +16,7 @@ import actions.layer
 from scapy.all import IP, TCP, UDP, DNS, DNSQR, sr1
 
 
-logger = logging.getLogger("test")
-
-
-def test_tamper():
+def test_tamper(logger):
     """
     Tests tampering with replace
     """
@@ -46,7 +44,7 @@ def test_tamper():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_tamper_ip():
+def test_tamper_ip(logger):
     """
     Tests tampering with IP
     """
@@ -68,7 +66,7 @@ def test_tamper_ip():
     assert confirm_unchanged(packet, original, IP, ["src"])
 
 
-def test_tamper_udp():
+def test_tamper_udp(logger):
     """
     Tests tampering with UDP
     """
@@ -90,7 +88,7 @@ def test_tamper_udp():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_tamper_ip_ident():
+def test_tamper_ip_ident(logger):
     """
     Tests tampering with IP and that the checksum is correctly changed
     """
@@ -129,7 +127,59 @@ def confirm_unchanged(packet, original, protocol, changed):
     return True
 
 
-def test_parse_parameters():
+@pytest.mark.parametrize("use_canary", [False, True], ids=["without_canary", "with_canary"])
+def test_mutate(logger, use_canary):
+    """
+    Tests the tamper 'replace' primitive.
+    """
+    logger.setLevel("ERROR")
+    canary_id = None
+    # Create an evaluator
+    if use_canary:
+        cmd = [
+            "--test-type", "echo",
+            "--censor", "censor2",
+            "--log", actions.utils.CONSOLE_LOG_LEVEL,
+            "--no-skip-empty",
+            "--bad-word", "facebook",
+            "--output-directory", actions.utils.RUN_DIRECTORY
+        ]
+        tester = evaluator.Evaluator(cmd, logger)
+
+        canary_id = evolve.run_collection_phase(logger, tester)
+
+    for _ in range(0, 25):
+        tamper = actions.tamper.TamperAction(None, field="flags", tamper_type="replace", tamper_value="R", tamper_proto="TCP")
+
+        # Test mutation 200 times to ensure it remains stable
+        for _ in range(0, 200):
+            tamper._mutate(canary_id)
+            tamper2 = actions.tamper.TamperAction(None)
+            # Confirm tamper value was properly ._fix()-ed
+            val = tamper.tamper_value
+            for _ in range(0, 5):
+                assert tamper.tamper_value == val, "Tamper value is not stable."
+            # Create a test packet to ensure the field/proto choice was safe
+            if random.random() < 0.5:
+                test_packet = actions.packet.Packet(IP()/TCP())
+            else:
+                test_packet = actions.packet.Packet(IP()/UDP())
+
+            # Check that tamper can run safely after mutation
+            try:
+                tamper.run(test_packet, logger)
+            except:
+                print(str(tamper))
+                raise
+
+            tamper._mutate_tamper_type()
+
+            # Test that parsing tamper works - note we have to remove the tamper{} to make a call directly using tamper's parse.
+            tamper2.parse(str(tamper)[7:-1], logger)
+            assert str(tamper2) == str(tamper)
+
+
+def test_parse_parameters(logger):
     """
     Tests that tamper properly rejects malformed tamper actions
     """
@@ -139,7 +189,8 @@ def test_parse_parameters():
         actions.tamper.TamperAction().parse("not:enough", logger)
 
 
-def test_corrupt():
+
+def test_corrupt(logger):
     """
     Tests the tamper 'corrupt' primitive.
     """
@@ -166,7 +217,7 @@ def test_corrupt():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_add():
+def test_add(logger):
     """
     Tests the tamper 'add' primitive.
     """
@@ -194,7 +245,7 @@ def test_add():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_decompress():
+def test_decompress(logger):
     """
     Tests the tamper 'decompress' primitive.
     """
@@ -239,14 +290,10 @@ def test_decompress():
     # Confirm tamper didn't corrupt anything else in the IP header
     assert confirm_unchanged(packet, original, IP, [])
 
-    packet = actions.packet.Packet(IP(dst="8.8.8.8")/TCP(dport=53)/DNS(qd=DNSQR(qname="maps.google.com")))
-    original = packet.copy()
-    tamper.tamper(packet, logger)
-    assert bytes(packet) == bytes(original)
 
 
 
-def test_corrupt_chksum():
+def test_corrupt_chksum(logger):
     """
     Tests the tamper 'replace' primitive.
     """
@@ -275,7 +322,7 @@ def test_corrupt_chksum():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_corrupt_dataofs():
+def test_corrupt_dataofs(logger):
     """
     Tests the tamper 'replace' primitive.
     """
@@ -301,7 +348,7 @@ def test_corrupt_dataofs():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_replace():
+def test_replace(logger):
     """
     Tests the tamper 'replace' primitive.
     """
@@ -334,7 +381,17 @@ def test_replace():
     assert confirm_unchanged(packet, original, IP, [])
 
 
-def test_parse_flags():
+def test_init():
+    """
+    Tests initializing with no parameters
+    """
+    tamper = actions.tamper.TamperAction(None)
+    assert tamper.field
+    assert tamper.tamper_proto
+    assert tamper.tamper_value is not None
+
+
+def test_parse_flags(logger):
     """
     Tests the tamper 'replace' primitive.
     """
@@ -350,7 +407,7 @@ def test_parse_flags():
 
 @pytest.mark.parametrize("test_type", ["parsed", "direct"])
 @pytest.mark.parametrize("value", ["EOL", "NOP", "Timestamp", "MSS", "WScale", "SAckOK", "SAck", "Timestamp", "AltChkSum", "AltChkSumOpt", "UTO"])
-def test_options(value, test_type):
+def test_options(logger, value, test_type):
     """
     Tests tampering options
     """
@@ -358,7 +415,6 @@ def test_options(value, test_type):
         tamper = actions.tamper.TamperAction(None, field="options-%s" % value.lower(), tamper_type="corrupt", tamper_value=bytes([12]))
     else:
         tamper = actions.tamper.TamperAction(None)
-        assert tamper.parse("TCP:options-%s:replace:" % value.lower(), logger)
         assert tamper.parse("TCP:options-%s:corrupt" % value.lower(), logger)
 
     packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
@@ -387,3 +443,23 @@ def test_options(value, test_type):
             break
     else:
         pytest.fail("Failed to find %s in options" % value)
+
+
+def test_tamper_mutate_compress(logger):
+    """
+    Tests that compress is handled right if its enabled
+    """
+    backup = copy.deepcopy(actions.tamper.ACTIVATED_PRIMITIVES)
+    actions.tamper.ACTIVATED_PRIMITIVES = ["compress"]
+    try:
+        tamper = actions.tamper.TamperAction(None)
+        assert tamper.parse("TCP:flags:corrupt", logger)
+        tamper._mutate_tamper_type()
+        assert tamper.tamper_type == "compress"
+        assert tamper.tamper_proto_str == "DNS"
+        assert tamper.field == "qd"
+        packet = actions.packet.Packet(IP()/TCP()/DNS()/DNSQR())
+        packet2 = tamper.tamper(packet, logger)
+        assert packet2 == packet
+    finally:
+        actions.tamper.ACTIVATED_PRIMITIVES = backup

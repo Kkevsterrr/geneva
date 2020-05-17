@@ -1,7 +1,22 @@
+pytest
 scapy==2.4.3
 requests
+dnspython
+docker
+anytree
+graphviz
 netifaces
 netfilterqueue
 cryptography==2.8
+paramiko
+codecov
+pytest-cov
+dnspython
+tld
+python-dotenv
+mysql-connector
+slackclient==1.3.1 # have not yet ported to support 2.x
+beautifulsoup4
 requests
-anytree
+psutil
+tqdm

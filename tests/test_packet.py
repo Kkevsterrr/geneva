@@ -1,12 +1,10 @@
-import logging
 import pytest
 
 import actions.packet
 import actions.layer
+import evolve
 
 from scapy.all import IP, TCP, UDP, DNS, DNSQR, Raw, DNSRR
-
-logger = logging.getLogger("test")
 
 
 def test_parse_layers():
@@ -65,7 +63,7 @@ def test_load():
     Tests loads.
     """
     tcp = actions.layer.TCPLayer(TCP())
-    assert tcp.gen("load")
+    load = tcp.gen("load")
     pkt = IP()/"datadata"
     p = actions.packet.Packet(pkt)
     assert p.get("IP", "load") == "datadata"
@@ -95,7 +93,7 @@ def test_load():
     assert p2.get("IP", "chksum") == None
 
 
-def test_parse_load():
+def test_parse_load(logger):
     """
     Tests load parsing.
     """
@@ -205,7 +203,7 @@ def test_multi_opts():
     """
     Tests various option getting/setting.
     """
-    pkt = IP()/TCP(options=[('MSS', 1460), ('SAckOK', b''), ('Timestamp', (4154603075, 0)), ('NOP', None), ('WScale', 7)])
+    pkt = IP()/TCP(options=[('MSS', 1460), ('SAckOK', b''), ('Timestamp', (4154603075, 0)), ('NOP', None), ('WScale', 7), ('md5header', b'abcd' * 8)])
     packet = actions.packet.Packet(pkt)
     assert packet.get("TCP", "options-sackok") == ''
     assert packet.get("TCP", "options-mss") == 1460
@@ -244,6 +242,16 @@ def test_options_eol():
     p.set("TCP", "options-eol", value)
     p2 = TCP(bytes(p))
     assert any(k == "EOL" for k, v in p2["TCP"].options)
+
+
+def test_compression_fallback(logger):
+    """
+    Test that compression does not touch a packet without DNS in it packet
+    """
+    pkt = UDP()
+    p = actions.packet.Packet(pkt)
+    p2 = actions.layer.DNSLayer.dns_decompress(p, logger)
+    assert p2 == p, "dns_decompress changed a non DNS packet"
 
 
 def test_options_mss():
@@ -418,7 +426,7 @@ def test_custom_get():
     assert tcp.get("TCP", "load") == "AAAA"
 
 
-def test_restrict_fields():
+def test_restrict_fields(logger):
     """
     Tests packet field restriction.
     """
@@ -483,12 +491,20 @@ def test_restrict_fields():
         assert layer == TCP
         assert field == "flags"
 
+        _, proto, field, value, _ = actions.trigger.Trigger.get_rand_trigger(None, 0)
+        assert proto == 'TCP'
+        assert field == "flags"
     actions.packet.Packet.reset_restrictions()
     actions.packet.SUPPORTED_LAYERS = [
         actions.layer.IPLayer,
         actions.layer.TCPLayer,
         actions.layer.UDPLayer
     ]
+
+    with pytest.raises(AssertionError):
+        actions.packet.Packet.restrict_fields(logger, ["TCP", "IP"], ["notathing"], ["notathing"])
+    actions.packet.Packet.reset_restrictions()
+
     actions.packet.Packet.restrict_fields(logger, ["TCP", "IP"], [], ["sport", "dport", "seq", "src"])
     packet = actions.packet.Packet(pkt)
     packet = packet.copy()
@@ -521,6 +537,10 @@ def test_restrict_fields():
         assert layer in [TCP, IP]
         assert field not in ["sport", "dport", "seq", "src"]
 
+        _, proto, field, value, _ = actions.trigger.Trigger.get_rand_trigger(None, 0)
+        assert proto in ['TCP', 'IP']
+        assert field not in ["sport", "dport", "seq", "src"]
+
     actions.packet.Packet.reset_restrictions()
     actions.packet.SUPPORTED_LAYERS = [
         actions.layer.IPLayer,
@@ -528,7 +548,7 @@ def test_restrict_fields():
         actions.layer.UDPLayer
     ]
 
-    actions.packet.Packet.restrict_fields(logger, ["IP", "UDP", "DNS"], [], ["version"])
+    evolve.restrict_headers(logger, "ip,udp,dns", "", "version")
     packet = actions.packet.Packet(pkt)
     proto, field, value = packet.get_random()
     assert proto.__name__ in ["IP", "UDP"]

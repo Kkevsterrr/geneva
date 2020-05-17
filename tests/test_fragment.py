@@ -1,5 +1,5 @@
-import logging
 import pytest
+import logging
 import sys
 # Include the root of the project
 sys.path.append("..")
@@ -8,13 +8,14 @@ import actions.fragment
 import actions.packet
 import actions.strategy
 import actions.utils
+import evolve
 
 from scapy.all import IP, TCP, UDP
 
 logger = logging.getLogger("test")
+MAX_UINT = 4294967295
 
-
-def test_segment():
+def test_segment(logger):
     """
     Tests the duplicate action primitive.
     """
@@ -30,8 +31,66 @@ def test_segment():
     assert packet1["Raw"].load == b'da', "Left packet incorrectly fragmented"
     assert packet2["Raw"].load == b"ta", "Right packet incorrectly fragmented"
 
+def test_segment_wrap(logger):
+    """
+    Tests if segment numbers can wrap around
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    assert str(fragment) == "fragment{tcp:-1:True}", "Fragment returned incorrect string representation: %s" % str(fragment)
 
-def test_segment_reverse():
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP()/("data"))
+    packet["TCP"].seq = MAX_UINT-1
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'da', "Left packet incorrectly fragmented"
+    assert packet2["Raw"].load == b"ta", "Right packet incorrectly fragmented"
+    assert packet1["TCP"].seq == MAX_UINT-1
+    assert packet2["TCP"].seq == 0
+
+def test_segment_wrap2(logger):
+    """
+    Tests if segment numbers can wrap around testing for off-by-one
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    assert str(fragment) == "fragment{tcp:-1:True}", "Fragment returned incorrect string representation: %s" % str(fragment)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP()/("data"))
+    packet["TCP"].seq = MAX_UINT
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'da', "Left packet incorrectly fragmented"
+    assert packet2["Raw"].load == b"ta", "Right packet incorrectly fragmented"
+    assert packet1["TCP"].seq == MAX_UINT
+    assert packet2["TCP"].seq == 1
+
+
+def test_segment_wrap3(logger):
+    """
+    Tests if segment numbers can wrap around testing for off-by-one
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    assert str(fragment) == "fragment{tcp:-1:True}", "Fragment returned incorrect string representation: %s" % str(fragment)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP()/("data"))
+    packet["TCP"].seq = MAX_UINT-2
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'da', "Left packet incorrectly fragmented"
+    assert packet2["Raw"].load == b"ta", "Right packet incorrectly fragmented"
+    assert packet1["TCP"].seq == MAX_UINT-2
+    assert packet2["TCP"].seq == MAX_UINT
+
+
+def test_segment_reverse(logger):
     """
     Tests the duplicate action primitive in reverse!
     """
@@ -48,11 +107,10 @@ def test_segment_reverse():
     assert packet2["Raw"].load == b"da", "Right packet incorrectly fragmented"
 
 
-def test_odd_fragment():
+def test_odd_fragment(logger):
     """
     Tests long IP fragmentation
     """
-
     fragment = actions.fragment.FragmentAction(correct_order=True, segment=False)
     assert str(fragment) == "fragment{ip:-1:True}", "Fragment returned incorrect string representation: %s" % str(fragment)
 
@@ -67,11 +125,10 @@ def test_odd_fragment():
     assert packet1["Raw"].load + packet2["Raw"].load == b'\x08\xae\r\x05\x00\x00\x00d\x00\x00\x00dP\x02 \x00e\xc1\x00\x00dataisodd', "Packets fragmentation was incorrect"
 
 
-def test_custom_fragment():
+def test_custom_fragment(logger):
     """
     Tests IP fragments with custom sized lengths
     """
-
     fragment = actions.fragment.FragmentAction(correct_order=True, fragsize=3, segment=False)
     assert str(fragment) == "fragment{ip:3:True}", "Fragment returned incorrect string representation: %s" % str(fragment)
 
@@ -85,11 +142,10 @@ def test_custom_fragment():
     assert packet1["Raw"].load + packet2["Raw"].load == b'\x08\xae\r\x05\x00\x00\x00d\x00\x00\x00dP\x02 \x00zp\x00\x00thisissomedata', "Packets fragmentation was incorrect"
 
 
-def test_reverse_fragment():
+def test_reverse_fragment(logger):
     """
     Tests fragmentation with reversed packets
     """
-
     fragment = actions.fragment.FragmentAction(correct_order=False, fragsize=3, segment=False)
     assert str(fragment) == "fragment{ip:3:False}", "Fragment returned incorrect string representation: %s" % str(fragment)
 
@@ -103,11 +159,10 @@ def test_reverse_fragment():
     assert packet2["Raw"].load + packet1["Raw"].load == b'\x08\xae\r\x05\x00\x00\x00d\x00\x00\x00dP\x02 \x00zp\x00\x00thisissomedata', "Packets fragmentation was incorrect"
 
 
-def test_udp_fragment():
+def test_udp_fragment(logger):
     """
     Tests fragmentation with reversed packets
     """
-
     fragment = actions.fragment.FragmentAction(correct_order=False, fragsize=2, segment=False)
     assert str(fragment) == "fragment{ip:2:False}", "Fragment returned incorrect string representation: %s" % str(fragment)
 
@@ -118,7 +173,21 @@ def test_udp_fragment():
     assert str(packet1["Raw"].load) != str(packet2["Raw"].load), "Packets were not different"
 
 
-def test_parse():
+def test_mutate(logger):
+    """
+    Tests mutating the fragment action
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=False, fragsize=2, segment=False)
+    assert str(fragment) == "fragment{ip:2:False}", "Fragment returned incorrect string representation: %s" % str(fragment)
+
+    for _ in range(0, 200):
+        fragment.mutate()
+        fragment.parse(str(fragment), logger)
+        packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1", proto=0x06)/TCP(sport=2222, dport=3333, chksum=0x4444)/("thisissomedata"))
+        packet1, packet2 = fragment.run(packet, logger)
+
+
+def test_parse(logger):
     """
     Tests parsing.
     """
@@ -168,7 +237,7 @@ def test_parse():
     strat.act_on_packet(packet, logger)
 
 
-def test_fallback():
+def test_fallback(logger):
     """
     Tests fallback behavior.
     """
@@ -200,11 +269,10 @@ def test_fallback():
     assert str(packet1) == str(packet2)
 
 
-def test_ip_only_fragment():
+def test_ip_only_fragment(logger):
     """
     Tests fragmentation without higher protocols.
     """
-
     fragment = actions.fragment.FragmentAction(correct_order=True)
     fragment.parse("fragment{ip:-1:True}", logger)
 
@@ -218,3 +286,86 @@ def test_ip_only_fragment():
     assert packet2["Raw"].load == b"11datadata", "Right packet incorrectly fragmented"
 
 
+def test_overlapping_segment():
+    """
+    Basic test for overlapping segments.
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    fragment.parse("fragment{tcp:-1:True:4}", logger)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(seq=100)/("datadata11datadata"))
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'datadata11dat', "Left packet incorrectly segmented"
+    assert packet2["Raw"].load == b"1datadata", "Right packet incorrectly fragmented"
+
+    assert packet1["TCP"].seq == 100, "First packet sequence number incorrect"
+    assert packet2["TCP"].seq == 109, "Second packet sequence number incorrect"
+
+def test_overlapping_segment_no_overlap():
+    """
+    Basic test for overlapping segments with no overlap. (shouldn't ever actually happen)
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    fragment.parse("fragment{tcp:-1:True:0}", logger)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(seq=100)/("datadata11datadata"))
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'datadata1', "Left packet incorrectly segmented"
+    assert packet2["Raw"].load == b"1datadata", "Right packet incorrectly fragmented"
+
+    assert packet1["TCP"].seq == 100, "First packet sequence number incorrect"
+    assert packet2["TCP"].seq == 109, "Second packet sequence number incorrect"
+
+def test_overlapping_segment_entire_packet():
+    """
+    Basic test for overlapping segments overlapping entire packet.
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    fragment.parse("fragment{tcp:-1:True:9}", logger)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(seq=100)/("datadata11datadata"))
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'datadata11datadata', "Left packet incorrectly segmented"
+    assert packet2["Raw"].load == b"1datadata", "Right packet incorrectly fragmented"
+
+    assert packet1["TCP"].seq == 100, "First packet sequence number incorrect"
+    assert packet2["TCP"].seq == 109, "Second packet sequence number incorrect"
+
+def test_overlapping_segment_out_of_bounds():
+    """
+    Basic test for overlapping segments overlapping beyond the edge of the packet.
+    """
+    fragment = actions.fragment.FragmentAction(correct_order=True)
+    fragment.parse("fragment{tcp:-1:True:20}", logger)
+
+    packet = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(seq=100)/("datadata11datadata"))
+    packet1, packet2 = fragment.run(packet, logger)
+
+    assert id(packet1) != id(packet2), "Duplicate aliased packet objects"
+
+    assert packet1["Raw"].load != packet2["Raw"].load, "Packets were not different"
+    assert packet1["Raw"].load == b'datadata11datadata', "Left packet incorrectly segmented"
+    assert packet2["Raw"].load == b"1datadata", "Right packet incorrectly fragmented"
+
+    assert packet1["TCP"].seq == 100, "First packet sequence number incorrect"
+    assert packet2["TCP"].seq == 109, "Second packet sequence number incorrect"
+
+def test_overlapping_segmentation_parse():
+    """
+    Basic test for parsing overlapping segments.
+    """
+
+    fragment = actions.fragment.FragmentAction(correct_order=False, fragsize=2, segment=True, overlap=3)
+    assert str(fragment) == "fragment{tcp:2:False:3}", "Fragment returned incorrect string representation: %s" % str(fragment)

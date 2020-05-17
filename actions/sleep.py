@@ -1,8 +1,21 @@
 from actions.action import Action
 
+
 class SleepAction(Action):
+    """
+    Defines the SleepAction - causes the engine to pause before sending a packet.
+    """
+    # Do not select the sleep action during evolutions
+    frequency = 0
     def __init__(self, time=1, environment_id=None):
-        Action.__init__(self, "sleep", "both")
+        """
+        Initializes the sleep action.
+
+        Args:
+            time (float): How much time the packet should delay before sending
+            environment_id (str, optional): Environment ID of the strategy this action is a part of
+        """
+        Action.__init__(self, "sleep", "out")
         self.terminal = False
         self.branching = False
         self.time = time

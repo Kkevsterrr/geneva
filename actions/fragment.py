@@ -5,19 +5,32 @@ import actions.packet
 from scapy.all import IP, TCP, fragment
 
 
+MAX_UINT = 4294967295
+
+
 class FragmentAction(Action):
-    def __init__(self, environment_id=None, correct_order=None, fragsize=-1, segment=True):
-        '''
-        correct_order specifies if the fragmented packets should come in the correct order
-        fragsize specifies how
-        '''
+    """
+    Defines the FragmentAction for Geneva - fragments or segments the given packet.
+    """
+    frequency = 2
+    def __init__(self, environment_id=None, correct_order=None, fragsize=-1, segment=True, overlap=0):
+        """
+        Initializes a fragment action object.
+
+        Args:
+            environment_id (str, optional): Environment ID of the strategy this object is a part of
+            correct_order (bool, optional): Whether or not the fragments/segments should be returned in the correct order
+            fragsize (int, optional): The index this packet should be cut. Defaults to -1, which cuts it in half.
+            segment (bool, optional): Whether we should perform fragmentation or segmentation
+            overlap (int, optional): How many bytes the fragments/segments should overlap
+        """
         Action.__init__(self, "fragment", "out")
         self.enabled = True
         self.branching = True
         self.terminal = False
         self.fragsize = fragsize
         self.segment = segment
-
+        self.overlap = overlap
         if correct_order == None:
             self.correct_order = self.get_rand_order()
         else:
@@ -87,6 +100,9 @@ class FragmentAction(Action):
         Segments a packet into two, given the size of the first packet (0:fragsize)
         Always returns two packets, since fragment is a branching action, so if we
         are unable to segment, it will duplicate the packet.
+
+        If overlap is specified, it will select n bytes from the second packet
+        and append them to the first, and increment the sequence number accordingly
         """
         if not packet.haslayer("TCP") or not hasattr(packet["TCP"], "load") or not packet["TCP"].load:
             return packet, packet.copy() # duplicate if no TCP or no payload to segment
@@ -101,7 +117,11 @@ class FragmentAction(Action):
             fragsize = int(len(payload)/2)
 
         # Craft new packets
-        pkt1 = IP(packet["IP"])/payload[:fragsize]
+
+        # Make sure we don't go out of bounds by choosing the min
+        overlap_bytes = min(len(payload[fragsize:]), self.overlap)
+        # Attach these bytes to the first packet
+        pkt1 = IP(packet["IP"])/payload[:fragsize + overlap_bytes]
         pkt2 = IP(packet["IP"])/payload[fragsize:]
 
         # We cannot rely on scapy's native parsing here - if a previous action has changed the
@@ -116,7 +136,11 @@ class FragmentAction(Action):
         packet2 = actions.packet.Packet(pkt2)
 
         # Reset packet2's SYN number
-        packet2["TCP"].seq += fragsize
+        if packet2["TCP"].seq + fragsize > MAX_UINT:
+            # Wrap sequence numbers around if greater than MAX_UINT
+            packet2["TCP"].seq = packet2["TCP"].seq + fragsize - MAX_UINT - 1
+        else:
+            packet2["TCP"].seq += fragsize
 
         del packet1["IP"].chksum
         del packet2["IP"].chksum
@@ -147,10 +171,14 @@ class FragmentAction(Action):
         Returns a string representation with the fragsize
         """
         s = Action.__str__(self)
-        if self.segment:
-            s += "{" + "tcp" + ":" + str(self.fragsize)  + ":" + str(self.correct_order) + "}"
+        if not self.overlap:
+            ending = "}"
         else:
-            s += "{" + "ip" + ":"+ str(self.fragsize)  + ":" + str(self.correct_order) + "}"
+            ending = ":" + str(self.overlap) + "}"
+        if self.segment:
+            s += "{" + "tcp" + ":" + str(self.fragsize)  + ":" + str(self.correct_order) + ending
+        else:
+            s += "{" + "ip" + ":"+ str(self.fragsize)  + ":" + str(self.correct_order) + ending
         return s
 
     def parse(self, string, logger):
@@ -169,22 +197,36 @@ class FragmentAction(Action):
         num_parameters = string.count(":")
 
         # If num_parameters is greater than 2, it's not a valid fragment action
-        if num_parameters != 2:
-            msg = "Cannot parse fragment action %s" % string
-            logger.error(msg)
-            raise Exception(msg)
-        else:
+        if num_parameters == 2:
             params = string.split(":")
             seg, fragsize, correct_order = params
+            overlap = 0
             if "tcp" in seg:
                 self.segment = True
             else:
                 self.segment = False
 
+        elif num_parameters == 3:
+            params = string.split(":")
+            seg, fragsize, correct_order, overlap = params
+            if overlap.endswith("}"):
+                overlap = overlap[:-1] # Chop off trailing }
+            if "tcp" in seg:
+                self.segment = True
+            else:
+                self.segment = False
+
+        else:
+            msg = "Cannot parse fragment action %s" % string
+            logger.error(msg)
+            raise Exception(msg)
+
         try:
             # Try to convert to int
             self.fragsize = int(fragsize)
-        except ValueError:
+            self.overlap = int(overlap)
+        except ValueError as e:
+            print(e)
             msg = "Cannot parse fragment action %s" % string
             logger.error(msg)
             raise Exception(msg)
@@ -196,3 +238,33 @@ class FragmentAction(Action):
             self.correct_order = False
 
         return True
+
+    def mutate(self, environment_id=None):
+        """
+        Mutates the fragment action - it either chooses a new segment offset,
+        switches the packet order, and/or changes whether it segments or fragments.
+        """
+        self.correct_order = self.get_rand_order()
+        self.segment = random.choice([True, True, True, False])
+        if self.segment:
+            if random.random() < 0.5:
+                self.fragsize = int(random.uniform(1, 60))
+            else:
+                self.fragsize = -1
+        else:
+            if random.random() < 0.2:
+                self.fragsize = int(random.uniform(1, 50))
+            else:
+                self.fragsize = -1
+
+        if random.random() < .5:
+            # Somewhat aggressively overlap
+            if random.random() < .5:
+                if self.fragsize == -1:
+                    self.overlap = 5
+                else:
+                    self.overlap = int(self.fragsize/2)
+            else:
+                self.overlap = int(random.uniform(1, 50))
+
+        return self

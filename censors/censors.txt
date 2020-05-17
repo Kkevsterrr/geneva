@@ -1,0 +1,22 @@
+1. TCP Censor that synchronizes on first SYN only, works 100% of the time, drops all packets after TCP forbidden content
+    - [flag:S]dup-tamper{TCP:syn:corrupt}
+2. TCP Censor that synchronizes on first SYN only, works 100% of the time, sends 5 RSTs to client after TCP forbidden content
+    - [flag:R]drop OR [flag:S]dup-tamper{TCP:syn:corrupt}
+3. TCP Censor that synchronizes on first SYN only, works 100% of the time, sends 5 RSTs to server AND client after TCP forbidden content
+    - [flag:S]dup-tamper{TCP:syn:corrupt}
+4. TCP Censor that synchronizes on first SYN, ACK only, works 100% of the time, drops all packets after TCP forbidden content
+    - [flag:S,A]dup-tamper{TCP:syn:corrupt}
+5. TCP Censor that synchronizes on first SYN and every 5 packets after that
+    - [flag:S]dup-tamper{TCP:syn:corrupt},[cyclic:4]dup-tamper{TCP:syn:corrupt}
+6. TCP Censor that works 100% of the time, drops all packets after TCP forbidden content if a TCB attached only to client/server IP is not torn down
+7. TCP Censor that works 100% of the time, drops all packets after TCP forbidden content if a TCB attached to client/server IP and port is not torn down
+8. TCP Censor that works 100% of the time, drops all packets after TCP forbidden content if a TCB attached to client/server IP, port, and in-window SEQ is not torn down
+    - [field:TCP:flags:A]-duplicate-tamper{TCP:flags:replace:R}-tamper{TCP:chksum:replace:4444}-| \/
+9. TCP Censor that works 100% of the time, tracks only 1 connection, drops all packets after TCP forbidden content if a TCB attached to client/server IP, port, and in-window SEQ if TCB matches
+    - Need to force re-sync w/ FIN/RST and then send insertion packet
+10. TCP Censor that can track multiple connections, can resynchronize its TCBs, checks packet checksums, works 100% of the time, drops all packets from either IP address after TCP forbidden content if a TCB attached to client/server IP, port, and in-window SEQ if TCB matches
+    - Need to force re-sync w/ FIN/RST and then send insertion packet with a correct chksum
+
+UDP:
+1. Censor that can inject responses to DNS requests
+    - [default value in packet]drop

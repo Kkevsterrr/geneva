@@ -1,11 +1,11 @@
 import binascii
+import copy
 import random
 import string
 import os
 import urllib.parse
 
 from scapy.all import IP, RandIP, UDP, DNS, DNSQR, Raw, TCP, fuzz
-
 
 class Layer():
     """
@@ -180,8 +180,7 @@ class Layer():
         value = urllib.parse.unquote(value)
 
         value = value.encode('utf-8')
-        # Add support for injecting arbitrary protocol payloads if requested
-        dns_payload = b"\x009ib\x81\x80\x00\x01\x00\x01\x00\x00\x00\x01\x08examples\x03com\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x01+\x00\x04\xc7\xbf2I\x00\x00)\x02\x00\x00\x00\x00\x00\x00\x00"
+        dns_payload = b"\x009ib\x81\x80\x00\x01\x00\x01\x00\x00\x00\x01\x08faceface\x03com\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x01+\x00\x04\xc7\xbf2I\x00\x00)\x02\x00\x00\x00\x00\x00\x00\x00"
         http_payload = b"GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n"
 
         value = value.replace(b"__DNS_REQUEST__", dns_payload)
@@ -195,7 +194,17 @@ class Layer():
         as a field properly.
         """
         load = ''.join([random.choice(string.ascii_lowercase + string.digits) for k in range(10)])
-        return urllib.parse.quote(load)
+        return random.choice(["", "__DNS_REQUEST__", "__HTTP_REQUEST__", urllib.parse.quote(load)])
+
+
+class RawLayer(Layer):
+    """
+    Defines an interface for the scapy Raw layer.
+    """
+    name = "Raw"
+    protocol = Raw
+    _fields = []
+    fields = []
 
 
 class IPLayer(Layer):
@@ -273,7 +282,11 @@ class IPLayer(Layer):
         Sets the flags field. There is a bug in scapy, if you retrieve an empty
         flags field, it will return "", but you cannot set this value back.
         To reproduce this bug:
+
+        .. code-block:: python
+
            >>> setattr(IP(), "flags", str(IP().flags)) # raises a ValueError
+
         To handle this case, this method converts empty string to zero so that
         it can be safely stored.
         """
@@ -400,9 +413,15 @@ class TCPLayer(Layer):
             'dataofs' : self.gen_dataofs,
             'flags'   : self.gen_flags,
             'chksum'  : self.gen_chksum,
-            'options' : self.gen_options
+            'options' : self.gen_options,
+            'window' : self.gen_window
         }
 
+    def gen_window(self, field):
+        """
+        Generates a window size.
+        """
+        return random.choice(range(10, 200, 10))
 
     def gen_chksum(self, field):
         """

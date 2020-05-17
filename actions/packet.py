@@ -110,11 +110,10 @@ class Packet():
         """
         iter_packet = self.packet
         while iter_packet:
-            if iter_packet.name.lower() == "raw":
-                return
             parsed_layer = Packet.parse_layer(iter_packet)
             if parsed_layer:
-                yield parsed_layer
+                if parsed_layer.name != "Raw":
+                    yield parsed_layer
                 iter_packet = parsed_layer.get_next_layer()
             else:
                 iter_packet = iter_packet.payload
