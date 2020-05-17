@@ -1,3 +1,7 @@
 scapy
 anytree
 psutil
+netifaces
+requests
+dnspython
+paramiko
