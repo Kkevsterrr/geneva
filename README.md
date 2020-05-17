@@ -1,4 +1,4 @@
-# Geneva [![Build Status](https://travis-ci.com/Kkevsterrr/geneva.svg?branch=master)](https://travis-ci.com/Kkevsterrr/geneva) [![codecov](https://codecov.io/gh/Kkevsterrr/geneva/branch/master/graph/badge.svg)](https://codecov.io/gh/Kkevsterrr/geneva)
+# Geneva [![Build Status](https://travis-ci.com/Kkevsterrr/geneva.svg?branch=master)](https://travis-ci.com/Kkevsterrr/geneva) [![codecov](https://codecov.io/gh/Kkevsterrr/geneva/branch/master/graph/badge.svg)](https://codecov.io/gh/Kkevsterrr/geneva)[![Documentation Status](https://readthedocs.org/projects/geneva/badge/?version=latest)](https://geneva.readthedocs.io/en/latest/?badge=latest)
 
 Geneva is an artificial intelligence tool that defeats censorship by exploiting bugs in censors, such as those in China, India, and Kazakhstan. Unlike many other anti-censorship solutions which require assistance from outside the censoring regime (Tor, VPNs, etc.), Geneva runs strictly on one side of the connection (either the client or server side).
 
@@ -6,12 +6,13 @@ Under the hood, Geneva uses a genetic algorithm to evolve censorship evasion str
 
 Geneva is composed of two high level components: its genetic algorithm (which it uses to evolve new censorship evasion strategies) and its strategy engine (which is uses to run an individual censorship evasion strategy over a network connection). 
 
-This codebase contains the Geneva's full implementation: its genetic algorithm, strategy engine, Python API, and a subset of published strategies. With these tools, users and researchers alike can evolve new strategies or leverage existing strategies to evade censorship. To learn more about how Geneva works, see [How it Works](#How-it-Works). 
+This codebase contains the Geneva's full implementation: its genetic algorithm, strategy engine, Python API, and a subset of published strategies. With these tools, users and researchers alike can evolve new strategies or leverage existing strategies to evade censorship. To learn more about how Geneva works, see [How it Works](#How-it-Works) or checkout our [documentation](https://geneva.readthedocs.io). 
 
 ## Setup
 
 Geneva has been developed and tested for Centos or Debian-based systems. Due to limitations of
 netfilter and raw sockets, Geneva does not work on OS X or Windows at this time and requires *python3.6*.
+More detailed setup instructions are available at our [documentation](https://geneva.readthedocs.io).
 
 Install netfilterqueue dependencies:
 ```
@@ -111,7 +112,7 @@ present in a strategy, all of the action trees are in the outbound forest.
 
 Both forests are composed of action trees, and each forest is allowed an arbitrarily many trees. 
 
-Action trees always start with a trigger, which is formatted as: `[<protocol>:<field>:<value>]`. For example, the trigger: `[TCP:flags:S]` will run its corresponding tree whenever it sees a `TCP` packet with the `flags` field set to `SYN`. If the corresponding action tree is `[TCP:flags:S]-drop-|`, this action tree will cause the engine to drop any `SYN` packets. `[TCP:flags:S]-duplicate-|` will cause the engine to duplicate any SYN packets. Triggers also can contain an optional 4th parameter for _gas_, which describes the number of times a trigger can fire. The triger `[IP:version:4:4]` will run only on the first 4 IPv4 packets it sees. If the gas is negative, the trigger acts as a _bomb_ trigger, which means the trigger will not fire until a certain number of applicable packets have been seen. For example, the trigger `[IP:version:4:-2]` will trigger only after it has seen two matching packets (and it will not trigger on those first packets). 
+Action trees always start with a trigger, which is formatted as: `[<protocol>:<field>:<value>]`. For example, the trigger: `[TCP:flags:S]` will run its corresponding tree whenever it sees a `TCP` packet with the `flags` field set to `SYN`. If the corresponding action tree is `[TCP:flags:S]-drop-|`, this action tree will cause the engine to drop any `SYN` packets. `[TCP:flags:S]-duplicate-|` will cause the engine to duplicate any SYN packets. 
 
 Syntactically, action trees end with `-|`.
 
