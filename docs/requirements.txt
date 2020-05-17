@@ -5,3 +5,4 @@ netifaces
 requests
 dnspython
 paramiko
+tld
