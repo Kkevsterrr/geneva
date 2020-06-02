@@ -1,7 +1,20 @@
 # Geneva Docker
 
-This implements the Docker base image for Geneva. You can run the base image with the below python:
+This implements the Docker base image for Geneva. Each docker container used by the evaluator runs out of the same base container.
+
+To build it:
 ```
+docker build -t base:latest -f docker/Dockerfile .
+```
+
+Optionally, to manually run/inspect the docker image to explore the image, run:
+
+```
+docker run -it base
+```
+
+You can run the base image with the below python:
+```python
 import os
 import docker
 
