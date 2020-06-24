@@ -8,7 +8,7 @@ from scapy.all import *
 BASEPATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASEPATH)
 
-import actions.packet
+import layers.packet
 import engine
 
 def test_engine():
@@ -55,7 +55,7 @@ def test_nat_unit():
         "forward_ip": "3.3.3.3"
     }
     pkt = IP(src="1.1.1.1", dst="2.2.2.2")/TCP()/Raw("test")
-    packet = actions.packet.Packet(pkt)
+    packet = layers.packet.Packet(pkt)
     eng = engine.Engine(80, "", forwarder=forwarder)
     eng.do_nat(packet)
     packet[IP].src == "2.2.2.2"

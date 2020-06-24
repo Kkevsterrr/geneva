@@ -9,7 +9,7 @@ server AND client.
 
 import logging
 import netifaces
-import actions.packet
+import layers.packet
 # Disable scapy ::1 warnings
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
@@ -42,25 +42,25 @@ class Censor3(Censor):
             self.num += 1
 
             # Only censor TCP packets for now
-            self.logger.debug("Inbound packet to censor: " + actions.packet.Packet._str_packet(packet))
+            self.logger.debug("Inbound packet to censor: " + layers.packet.Packet._str_packet(packet))
             if "TCP" not in packet:
                 return False
 
             if packet["TCP"].sprintf('%TCP.flags%') == "S":
                 self.tcb = packet["TCP"].seq + 1
-                self.logger.debug("Synchronizing TCB on packet " + actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Synchronizing TCB on packet " + layers.packet.Packet._str_packet(packet))
                 return False
 
             if packet["TCP"].seq == self.tcb:
                 self.tcb += len(self.get_payload(packet))
 
             else:
-                self.logger.debug("Ignoring packet: " + actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Ignoring packet: " + layers.packet.Packet._str_packet(packet))
                 return False
 
             for keyword in self.forbidden:
                 if keyword in self.get_payload(packet):
-                    self.logger.debug("Packet triggered censor: " + actions.packet.Packet._str_packet(packet))
+                    self.logger.debug("Packet triggered censor: " + layers.packet.Packet._str_packet(packet))
                     return True
 
             return False

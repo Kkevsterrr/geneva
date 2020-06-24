@@ -1,7 +1,7 @@
 import threading
 import os
 
-import actions.packet
+import layers.packet
 from scapy.all import sniff
 from scapy.utils import PcapWriter
 
@@ -33,7 +33,7 @@ class Sniffer():
         This callback is called whenever a packet is applied.
         Returns true if it should finish, otherwise, returns false.
         """
-        packet = actions.packet.Packet(scapy_packet)
+        packet = layers.packet.Packet(scapy_packet)
         for proto in ["TCP", "UDP"]:
             if(packet.haslayer(proto) and ((packet[proto].sport == self.port) or (packet[proto].dport == self.port))):
                 break

@@ -4,7 +4,7 @@ Censor 4
 Dropping censor that synchronizes TCB on all SYN and ACK packets.
 """
 
-import actions.packet
+import layers.packet
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import IP, TCP
@@ -28,7 +28,7 @@ class Censor4(Censor):
             self.num += 1
 
 
-            self.logger.debug("Inbound packet to censor: " + actions.packet.Packet._str_packet(packet))
+            self.logger.debug("Inbound packet to censor: " + layers.packet.Packet._str_packet(packet))
             if self.drop_all_from == packet["IP"].src:
                 self.logger.debug("Dropping all from this IP %s..." % self.drop_all_from)
                 return True
@@ -40,25 +40,25 @@ class Censor4(Censor):
             # Initial TCP synchronization
             if "S" == packet["TCP"].sprintf('%TCP.flags%'):
                 self.tcb = packet["TCP"].seq + 1
-                self.logger.debug(("Synchronizing TCB (%d) on S packet " + actions.packet.Packet._str_packet(packet)) % self.tcb)
+                self.logger.debug(("Synchronizing TCB (%d) on S packet " + layers.packet.Packet._str_packet(packet)) % self.tcb)
                 return False
 
             if "A" == packet["TCP"].sprintf('%TCP.flags%'):
                 self.tcb = packet["TCP"].seq
-                self.logger.debug(("Synchronizing TCB (%d) on A packet " + actions.packet.Packet._str_packet(packet)) % self.tcb)
+                self.logger.debug(("Synchronizing TCB (%d) on A packet " + layers.packet.Packet._str_packet(packet)) % self.tcb)
                 return False
 
             # If we're tracking this packet stream
             if packet["TCP"].seq == self.tcb:
                 self.tcb += len(self.get_payload(packet))
             else:
-                self.logger.debug("Ignoring packet: " + actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Ignoring packet: " + layers.packet.Packet._str_packet(packet))
                 return False
 
             # Check if any forbidden words appear in the packet payload
             for keyword in self.forbidden:
                 if keyword in self.get_payload(packet):
-                    self.logger.debug("Packet triggered censor: " + actions.packet.Packet._str_packet(packet))
+                    self.logger.debug("Packet triggered censor: " + layers.packet.Packet._str_packet(packet))
                     return True
 
             return False
