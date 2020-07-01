@@ -136,17 +136,61 @@ class CustomAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extras):
         super().__init__(logger, extras)
         self.ips = {}
+    
+    def debug(self, msg, *args, **kwargs):
+        msg, args, kwargs = self.process(msg, args, kwargs)
 
-    def process(self, msg, kwargs):
+        self.logger.debug(msg, *args, **kwargs)
+
+    def info(self, msg, *args, **kwargs):
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.info(msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.warning(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.error(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.critical(msg, *args, **kwargs)
+
+    def get_ip(self, ip):
+        if ip not in self.ips:
+            random_ip = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+            self.logger.info("Registering new random IP: %s" % random_ip)
+            self.ips[ip] = random_ip
+
+    def process(self, msg, args, kwargs):
+        new_args = []
+        for arg in args:
+            if type(arg) == str:
+                for ip in self.regex.findall(arg):
+                    new_ip = self.get_ip(ip)
+
+                    arg = arg.replace(ip, self.ips[ip])
+
+            
+            new_args.append(arg)
+
         for ip in self.regex.findall(msg):
             if ip not in self.ips:
                 random_ip = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
                 self.logger.debug("Registering new random IP: %s" % random_ip)
                 self.ips[ip] = random_ip
+            new_ip = self.get_ip(ip)
 
             msg = msg.replace(ip, self.ips[ip])
-       
+        
         return msg, kwargs
+        return msg, tuple(new_args), kwargs
 
 def close_logger(logger):
     """
