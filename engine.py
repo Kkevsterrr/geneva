@@ -193,7 +193,7 @@ class Engine():
         while (not self.in_nfqueue_started or not self.out_nfqueue_started) and i < maxwait:
             time.sleep(0.1)
             i += 1
-        self.logger.debug("NFQueue Initialized after %d", int(i))
+        self.logger.debug(("NFQueue Initialized after %d", int(i)))
 
     def shutdown_nfqueue(self):
         """

@@ -8,6 +8,10 @@ import string
 import sys
 import random
 import urllib.parse
+import re
+import socket
+import random
+import struct
 
 import actions.action
 import actions.trigger
@@ -85,7 +89,7 @@ def parse(requested_trees, logger):
     return strat
 
 
-def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level=logging.DEBUG):
+def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level=logging.DEBUG, demo_mode=False):
     """
     Configures and returns a logger.
     """
@@ -121,8 +125,28 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     ch.setLevel(log_level)
     CONSOLE_LOG_LEVEL = ch.level
     logger.addHandler(ch)
-    return logger
+    return CustomAdapter(logger, {}) if demo_mode else logger
 
+class CustomAdapter(logging.LoggerAdapter):
+    """
+    Used for demo mode, to change sensitive IP addresses where necessary
+    """
+    regex = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
+
+    def __init__(self, logger, extras):
+        super().__init__(logger, extras)
+        self.ips = {}
+
+    def process(self, msg, kwargs):
+        for ip in self.regex.findall(msg):
+            if ip not in self.ips:
+                random_ip = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+                self.logger.debug("Registering new random IP: %s" % random_ip)
+                self.ips[ip] = random_ip
+
+            msg = msg.replace(ip, self.ips[ip])
+       
+        return msg, kwargs
 
 def close_logger(logger):
     """
