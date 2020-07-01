@@ -135,6 +135,7 @@ class CustomAdapter(logging.LoggerAdapter):
 
     def __init__(self, logger, extras):
         super().__init__(logger, extras)
+        self.handlers = logger.handlers
         self.ips = {}
     
     def debug(self, msg, *args, **kwargs):

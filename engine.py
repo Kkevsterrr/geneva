@@ -30,7 +30,7 @@ BASEPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class Engine():
-    def __init__(self, server_port, string_strategy, server_side=False, environment_id=None, output_directory="trials", log_level="info"):
+    def __init__(self, server_port, string_strategy, server_side=False, environment_id=None, output_directory="trials", log_level="info", demo_mode=False):
         self.server_port = server_port
         self.seen_packets = []
         # Set up the directory and ID for logging
@@ -45,7 +45,8 @@ class Engine():
                                                __name__,
                                                "engine",
                                                environment_id,
-                                               log_level=log_level)
+                                               log_level=log_level,
+                                               demo_mode=demo_mode)
         self.output_directory = output_directory
         self.server_side = server_side
 
@@ -313,6 +314,7 @@ def get_args():
     parser.add_argument('--log', action='store', default="debug",
                         choices=("debug", "info", "warning", "critical", "error"),
                         help="Sets the log level")
+    parser.add_argument("--demo-mode", action='store_true', help="Replaces all IPs with dummy IPs in log messages so as not to reveal sensitive IP addresses")
 
     args = parser.parse_args()
     return args
