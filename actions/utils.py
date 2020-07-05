@@ -12,7 +12,7 @@ import urllib.parse
 
 import actions.action
 import actions.trigger
-import actions.packet
+import layers.packet
 import plugins.plugin_client
 import plugins.plugin_server
 
@@ -309,7 +309,7 @@ def get_from_fuzzed_or_real_packet(environment_id, real_packet_probability, enab
     if packets and random.random() < real_packet_probability:
         packet = random.choice(packets)
         return packet.get_random()
-    return actions.packet.Packet().gen_random()
+    return layers.packet.Packet().gen_random()
 
 
 def read_packets(environment_id):
@@ -327,7 +327,7 @@ def read_packets(environment_id):
     parsed = []
     try:
         packets = rdpcap(packets_path)
-        parsed = [actions.packet.Packet(p) for p in packets]
+        parsed = [layers.packet.Packet(p) for p in packets]
     except Exception as e:
         print(e)
         print("FAILED TO PARSE!")

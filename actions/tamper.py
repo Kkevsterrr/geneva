@@ -12,7 +12,7 @@ modifications (particularly header modifications). It supports the following pri
 
 from actions.action import Action
 import actions.utils
-from actions.layer import DNSLayer
+from layers.dns_layer import DNSLayer
 
 import random
 

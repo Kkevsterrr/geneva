@@ -7,6 +7,7 @@ import actions.drop
 import actions.tamper
 import actions.duplicate
 import actions.utils
+import layers.packet
 
 
 def test_init():
@@ -46,9 +47,9 @@ def test_check():
     a = actions.tree.ActionTree("out")
     logger = logging.getLogger("test")
     a.parse("[TCP:flags:RA]-tamper{TCP:flags:replace:S}-|", logger)
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert not a.check(p, logger)
-    p = actions.packet.Packet(IP(ttl=64)/TCP(flags="RA"))
+    p = layers.packet.Packet(IP(ttl=64)/TCP(flags="RA"))
     assert a.check(p, logger)
     assert a.remove_one()
     assert a.check(p, logger)
@@ -56,7 +57,7 @@ def test_check():
     assert a.check(p, logger)
     a.parse("[IP:ttl:64]-tamper{TCP:flags:replace:S}-|", logger)
     assert a.check(p, logger)
-    p = actions.packet.Packet(IP(ttl=15)/TCP(flags="RA"))
+    p = layers.packet.Packet(IP(ttl=15)/TCP(flags="RA"))
     assert not a.check(p, logger)
 
 
@@ -67,11 +68,11 @@ def test_scapy():
     a = actions.tree.ActionTree("out")
     logger = logging.getLogger("test")
     a.parse("[TCP:reserved:0]-tamper{TCP:flags:replace:S}-|", logger)
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(p, logger)
     packets = a.run(p, logger)
     assert packets[0][TCP].flags == "S"
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(p, logger)
     a.parse("[TCP:reserved:0]-tamper{TCP:chksum:corrupt}-|", logger)
     packets = a.run(p, logger)
@@ -424,7 +425,7 @@ def test_run():
     duplicate2 = actions.duplicate.DuplicateAction()
     drop = actions.drop.DropAction()
 
-    packet = actions.packet.Packet(IP()/TCP())
+    packet = layers.packet.Packet(IP()/TCP())
     a.add_action(tamper)
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 1
@@ -433,7 +434,7 @@ def test_run():
     a.add_action(tamper2)
     print(str(a))
 
-    packet = actions.packet.Packet(IP()/TCP())
+    packet = layers.packet.Packet(IP()/TCP())
     assert not a.add_action(tamper), "tree added duplicate action"
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 1
@@ -444,7 +445,7 @@ def test_run():
     a.remove_action(tamper2)
     a.remove_action(tamper)
     a.add_action(duplicate)
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
     assert None not in packets
@@ -454,7 +455,7 @@ def test_run():
 
     duplicate.left = tamper
     duplicate.right = tamper2
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     print("ABUT TO RUN")
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
@@ -467,7 +468,7 @@ def test_run():
     print(str(a))
 
     tamper.left = duplicate2
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 3
     assert None not in packets
@@ -477,7 +478,7 @@ def test_run():
     print(str(a))
 
     tamper2.left = drop
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
     assert None not in packets
@@ -487,13 +488,13 @@ def test_run():
 
     assert a.remove_action(duplicate2)
     tamper.left = actions.drop.DropAction()
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logger )
     assert len(packets) == 0
     print(str(a))
 
     a.parse("[TCP:flags:A]-duplicate(tamper{TCP:flags:replace:R}(tamper{TCP:chksum:replace:14239},),duplicate(tamper{TCP:flags:replace:S},))-|", logger)
-    packet = actions.packet.Packet(IP()/TCP(flags="A"))
+    packet = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(packet, logger)
     packets = a.run(packet, logger)
     assert len(packets) == 3

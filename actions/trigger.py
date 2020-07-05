@@ -1,6 +1,7 @@
 import actions.utils
 import random
 import re
+import layers.packet
 
 FIXED_TRIGGER = None
 GAS_ENABLED = True
@@ -177,7 +178,7 @@ class Trigger(object):
         value = m.group(3)
 
         # Parse out the given value if necessary
-        value = actions.packet.Packet.parse(proto, field, value)
+        value = layers.packet.Packet.parse(proto, field, value)
 
         # Trigger gas is set to None if it is disabled
         trigger_gas = None

@@ -5,7 +5,7 @@ state if a RST or FIN, it simply tears down. It creates new TCBs for connections
 yet aware of, but does not check the checksums of incoming packets.
 """
 
-import actions.packet
+import layers.packet
 import netifaces
 from censors.censor import Censor
 from scapy.all import IP, TCP
@@ -28,7 +28,7 @@ class Censor8b(Censor):
         Returns true or false.
         """
         try:
-            self.logger.debug("Inbound packet to censor: %s" % actions.packet.Packet._str_packet(packet))
+            self.logger.debug("Inbound packet to censor: %s" % layers.packet.Packet._str_packet(packet))
             if packet["IP"].src in self.flagged_ips:
                 self.logger.debug("Content from a flagged IP detected %s..." % packet["IP"].src)
                 return True
@@ -49,7 +49,7 @@ class Censor8b(Censor):
                 # so we can just replace that tcb with updated info
                 tcb = self.get_partial_tcb(packet)
                 if tcb is None:
-                    self.logger.debug("Making a new TCB for packet %s" % actions.packet.Packet._str_packet(packet))
+                    self.logger.debug("Making a new TCB for packet %s" % layers.packet.Packet._str_packet(packet))
                     tcb = {}
 
                     tcb["src"] = packet["IP"].src
@@ -64,12 +64,12 @@ class Censor8b(Censor):
                     tcb["seq"] += len(self.get_payload(packet))
 
                 self.tcbs.append(tcb)
-                self.logger.debug("Synchronizing a TCB (%s) on packet %s " % (str(tcb), actions.packet.Packet._str_packet(packet)))
+                self.logger.debug("Synchronizing a TCB (%s) on packet %s " % (str(tcb), layers.packet.Packet._str_packet(packet)))
                 return False
             # If connection is getting torn down
             elif tcb and packet["TCP"].sprintf('%TCP.flags%') in ["R", "RA"]:
                 self.tcbs.remove(tcb)
-                self.logger.debug(("Deleting TCB for packet %s" % actions.packet.Packet._str_packet(packet)))
+                self.logger.debug(("Deleting TCB for packet %s" % layers.packet.Packet._str_packet(packet)))
                 return False
 
             if not tcb:
@@ -82,7 +82,7 @@ class Censor8b(Censor):
             # Check if any forbidden words appear in the packet payload
             for keyword in self.forbidden:
                 if keyword in self.get_payload(packet):
-                    self.logger.debug("Packet triggered censor: %s" % actions.packet.Packet._str_packet(packet))
+                    self.logger.debug("Packet triggered censor: %s" % layers.packet.Packet._str_packet(packet))
                     return True
 
             return False
@@ -133,7 +133,7 @@ class Censor8b(Censor):
         Checks if the packet matches the stored TCB.
         """
         for tcb in self.tcbs:
-            self.logger.debug("Checking %s against packet %s" % (str(tcb), actions.packet.Packet._str_packet(packet)))
+            self.logger.debug("Checking %s against packet %s" % (str(tcb), layers.packet.Packet._str_packet(packet)))
 
             if (packet["IP"].src == tcb["src"] and \
                 packet["IP"].dst == tcb["dst"] and \
@@ -149,7 +149,7 @@ class Censor8b(Censor):
         are correct.
         """
         for tcb in self.tcbs:
-            self.logger.debug("Checking %s against packet %s for partial match" % (str(tcb), actions.packet.Packet._str_packet(packet)))
+            self.logger.debug("Checking %s against packet %s for partial match" % (str(tcb), layers.packet.Packet._str_packet(packet)))
 
             if (packet["IP"].src == tcb["src"] and \
                 packet["IP"].dst == tcb["dst"] and \

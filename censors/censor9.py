@@ -7,7 +7,7 @@ More closely mimics GFW behavior.
 """
 
 import logging
-import actions.packet
+import layers.packet
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import IP, TCP
 
@@ -27,7 +27,7 @@ class Censor9(Censor):
         Check if the censor should run against this packet. Returns true or false.
         """
         try:
-            self.logger.debug("Inbound packet to censor: " + actions.packet.Packet._str_packet(packet))
+            self.logger.debug("Inbound packet to censor: " + layers.packet.Packet._str_packet(packet))
             if self.drop_all_from == packet["IP"].src:
                 self.logger.debug("Dropping all from this IP %s..." % self.drop_all_from)
                 return True
@@ -51,7 +51,7 @@ class Censor9(Censor):
                     self.tcb["seq"] += len(self.get_payload(packet))
 
                 self.resynchronize = False
-                self.logger.debug("Synchronizing TCB on packet " + actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Synchronizing TCB on packet " + layers.packet.Packet._str_packet(packet))
                 return self.check_forbidden(packet)
 
             # If connection is getting torn down
@@ -59,7 +59,7 @@ class Censor9(Censor):
                  (packet["TCP"].sprintf('%TCP.flags%') == "R" or \
                   packet["TCP"].sprintf('%TCP.flags%') == "F"):
                 self.resynchronize = True
-                self.logger.debug(("Entering resynchronization state on packet " + actions.packet.Packet._str_packet(packet)))
+                self.logger.debug(("Entering resynchronization state on packet " + layers.packet.Packet._str_packet(packet)))
 
             if not self.tcb_matches(packet):
                 self.logger.debug("TCB does not match packet.")
@@ -89,7 +89,7 @@ class Censor9(Censor):
         # Check if any forbidden words appear in the packet payload
         for keyword in self.forbidden:
             if keyword in self.get_payload(packet):
-                self.logger.debug("Packet triggered censor: " + actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Packet triggered censor: " + layers.packet.Packet._str_packet(packet))
                 return True
         return False
 
