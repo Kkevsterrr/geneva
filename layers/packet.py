@@ -1,15 +1,19 @@
 import copy
 import random
 
-import actions.layer
-
+import layers.layer
+import layers.ip_layer
+import layers.tcp_layer
+import layers.udp_layer
+import layers.dns_layer
+import layers.dnsqr_layer
 
 _SUPPORTED_LAYERS = [
-    actions.layer.IPLayer,
-    actions.layer.TCPLayer,
-    actions.layer.UDPLayer,
-    actions.layer.DNSLayer,
-    actions.layer.DNSQRLayer
+    layers.ip_layer.IPLayer,
+    layers.tcp_layer.TCPLayer,
+    layers.udp_layer.UDPLayer,
+    layers.dns_layer.DNSLayer,
+    layers.dnsqr_layer.DNSQRLayer
 ]
 SUPPORTED_LAYERS = _SUPPORTED_LAYERS
 
@@ -326,6 +330,6 @@ class Packet():
         """
         Performs DNS decompression, if applicable. Returns a new packet.
         """
-        self.packet = actions.layer.DNSLayer.dns_decompress(self.packet, logger)
+        self.packet = layers.dns_layer.DNSLayer.dns_decompress(self.packet, logger)
         self.layers = self.setup_layers()
         return self

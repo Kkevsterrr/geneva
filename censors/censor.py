@@ -4,7 +4,7 @@ import logging
 import random
 import os
 
-import actions.packet
+import layers.packet
 import actions.utils
 
 # Squelch annoying scapy ::1 runtime errors
@@ -104,7 +104,7 @@ class Censor(object):
         Sends a packet with scapy.
         """
         if "TCP" in packet:
-            self.logger.debug(actions.packet.Packet._str_packet(packet))
+            self.logger.debug(layers.packet.Packet._str_packet(packet))
         send(packet, verbose=False)
         return
 

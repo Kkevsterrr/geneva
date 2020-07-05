@@ -1,6 +1,6 @@
 import random
 from actions.action import Action
-import actions.packet
+import layers.packet
 
 from scapy.all import IP, TCP, fragment
 
@@ -88,8 +88,8 @@ class FragmentAction(Action):
         else:
             # packet can be fragmented as requested
             frags = self.fragment(packet.copy().packet, fragsize=self.fragsize*8)
-        packet1 = actions.packet.Packet(frags[0])
-        packet2 = actions.packet.Packet(frags[1])
+        packet1 = layers.packet.Packet(frags[0])
+        packet2 = layers.packet.Packet(frags[1])
         if self.correct_order:
             return packet1, packet2
         else:
@@ -132,8 +132,8 @@ class FragmentAction(Action):
         if not pkt2.haslayer("TCP"):
             pkt2 = IP(packet["IP"])/TCP(bytes(pkt2["IP"].load))
 
-        packet1 = actions.packet.Packet(pkt1)
-        packet2 = actions.packet.Packet(pkt2)
+        packet1 = layers.packet.Packet(pkt1)
+        packet2 = layers.packet.Packet(pkt2)
 
         # Reset packet2's SYN number
         if packet2["TCP"].seq + fragsize > MAX_UINT:

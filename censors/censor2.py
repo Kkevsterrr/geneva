@@ -6,7 +6,7 @@ Designed to be run by the evaluator.
 TCP Censor that synchronizes on first SYN only, works 100% of the time, sends 5 RSTs to client.
 """
 
-import actions.packet
+import layers.packet
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import IP, TCP
@@ -26,7 +26,7 @@ class Censor2(Censor):
         Check if the censor should run against this packet. Returns true or false.
         """
         try:
-            self.logger.debug("Inbound packet to censor: %s", actions.packet.Packet._str_packet(packet))
+            self.logger.debug("Inbound packet to censor: %s", layers.packet.Packet._str_packet(packet))
 
             # Only censor TCP packets for now
             if "TCP" not in packet:
@@ -34,19 +34,19 @@ class Censor2(Censor):
 
             if packet["TCP"].sprintf('%TCP.flags%') == "S":
                 self.tcb = packet["TCP"].seq + 1
-                self.logger.debug("Synchronizing TCB on packet: %s", actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Synchronizing TCB on packet: %s", layers.packet.Packet._str_packet(packet))
                 return False
 
             if packet["TCP"].seq == self.tcb:
                 self.tcb += len(self.get_payload(packet))
 
             else:
-                self.logger.debug("Ignoring packet: %s", actions.packet.Packet._str_packet(packet))
+                self.logger.debug("Ignoring packet: %s", layers.packet.Packet._str_packet(packet))
                 return False
 
             for keyword in self.forbidden:
                 if keyword in self.get_payload(packet):
-                    self.logger.debug("Packet triggered censor: %s", actions.packet.Packet._str_packet(packet))
+                    self.logger.debug("Packet triggered censor: %s", layers.packet.Packet._str_packet(packet))
                     return True
 
             return False

@@ -16,6 +16,7 @@ import actions.strategy
 import actions.tree
 import actions.trigger
 import evaluator
+import layers.packet
 
 # Grab the terminal size for printing
 try:
@@ -715,7 +716,7 @@ def restrict_headers(logger, protos, filter_fields, disabled_fields):
     if disabled_fields:
         disabled_fields = disabled_fields.split(",")
 
-    actions.packet.Packet.restrict_fields(logger, protos, filter_fields, disabled_fields)
+    layers.packet.Packet.restrict_fields(logger, protos, filter_fields, disabled_fields)
 
 
 def driver(cmd):

@@ -25,7 +25,7 @@ from scapy.config import conf
 
 socket.setdefaulttimeout(1)
 
-import actions.packet
+import layers.packet
 import actions.strategy
 import actions.utils
 
@@ -141,10 +141,10 @@ class Engine():
         configured route, and clears the checksums for recalculating
 
         Args:
-            packet (Actions.packet.Packet): packet to modify before sending
+            packet (layers.packet.Packet): packet to modify before sending
 
         Returns:
-            Actions.packet.Packet: the modified packet
+            layers.packet.Packet: the modified packet
         """
         if packet["IP"].src == self.sender_ip:
             packet["IP"].dst = self.forward_ip
@@ -329,7 +329,7 @@ class Engine():
         if not self.running_nfqueue:
             return
 
-        packet = actions.packet.Packet(IP(nfpacket.get_payload()))
+        packet = layers.packet.Packet(IP(nfpacket.get_payload()))
         self.logger.debug("Received outbound packet %s", str(packet))
 
         # Record this packet for a .pacp later
@@ -365,7 +365,7 @@ class Engine():
         """
         if not self.running_nfqueue:
             return
-        packet = actions.packet.Packet(IP(nfpacket.get_payload()))
+        packet = layers.packet.Packet(IP(nfpacket.get_payload()))
 
         if self.save_seen_packets:
             self.seen_packets.append(packet)

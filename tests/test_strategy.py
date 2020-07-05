@@ -10,6 +10,7 @@ import actions.utils
 import actions.strategy
 import evaluator
 import evolve
+import layers.layer
 
 from scapy.all import IP, TCP, Raw
 
@@ -67,24 +68,24 @@ def test_run(logger):
     strat3 = actions.utils.parse("[TCP:flags:A]-duplicate(tamper{TCP:dataofs:replace:0},)-| \/", logger)
     strat4 = actions.utils.parse("[TCP:flags:A]-duplicate(tamper{TCP:flags:replace:R}(tamper{TCP:chksum:replace:15239},),duplicate(tamper{TCP:flags:replace:S}(tamper{TCP:chksum:replace:14539}(tamper{TCP:seq:corrupt},),),))-| \/", logger)
 
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
     packets = strat1.act_on_packet(p1, logger, direction="out")
     assert packets, "Strategy dropped SYN packets"
     assert len(packets) == 1
     assert packets[0]["TCP"].flags == "S"
 
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
     packets = strat2.act_on_packet(p1, logger, direction="out")
     assert not packets, "Strategy failed to drop SYN packets"
 
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="A", dataofs=5))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="A", dataofs=5))
     packets = strat3.act_on_packet(p1, logger, direction="out")
     assert packets, "Strategy dropped packets"
     assert len(packets) == 2, "Incorrect number of packets emerged from forest"
     assert packets[0]["TCP"].dataofs == 0, "Packet tamper failed"
     assert packets[1]["TCP"].dataofs == 5, "Duplicate packet was tampered"
 
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="A", dataofs=5, chksum=100))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="A", dataofs=5, chksum=100))
     packets = strat4.act_on_packet(p1, logger, direction="out")
     assert packets, "Strategy dropped packets"
     assert len(packets) == 3, "Incorrect number of packets emerged from forest"
@@ -96,12 +97,12 @@ def test_run(logger):
     assert packets[2]["TCP"].flags == "A", "Duplicate failed"
 
     strat4 = actions.utils.parse("[TCP:load:]-tamper{TCP:load:replace:mhe76jm0bd}(fragment{ip:-1:True}(tamper{IP:load:corrupt},drop),)-| \/ ", logger)
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
     packets = strat4.act_on_packet(p1, logger)
 
     # Will fail with scapy 2.4.2 if packet is reparsed
     strat5 = actions.utils.parse("[TCP:options-eol:]-tamper{TCP:load:replace:o}(tamper{TCP:dataofs:replace:11},)-| \/", logger)
-    p1 = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
+    p1 = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S"))
     packets = strat5.act_on_packet(p1, logger)
 
 
@@ -205,5 +206,5 @@ def test_fail_cases(logger):
     s = "[IP:proto:6]-tamper{IP:proto:replace:125}(fragment{tcp:48:True:26}(tamper{TCP:options-md5header:replace:37f0e737da65224ea03d46c713ed6fd2},),)-| \/ "
     s = actions.utils.parse(s, logger)
 
-    p = actions.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S")/Raw("aaaaaaaaaa"))
+    p = layers.packet.Packet(IP(src="127.0.0.1", dst="127.0.0.1")/TCP(sport=2222, dport=3333, seq=100, ack=100, flags="S")/Raw("aaaaaaaaaa"))
     s.act_on_packet(p, logger)

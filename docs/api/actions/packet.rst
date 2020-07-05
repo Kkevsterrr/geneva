@@ -1,4 +1,4 @@
-geneva.actions.packet
+geneva.layers.packet
 =====================
 
 .. automodule:: packet

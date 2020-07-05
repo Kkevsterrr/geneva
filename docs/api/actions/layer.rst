@@ -1,4 +1,4 @@
-geneva.actions.layer
+geneva.layers.layer
 ====================
 
 .. automodule:: layer

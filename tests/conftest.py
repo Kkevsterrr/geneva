@@ -7,7 +7,7 @@ import os
 import shutil
 
 import evolve
-import actions.packet
+import layers.packet
 
 
 def pytest_addoption(parser):
@@ -39,7 +39,7 @@ def reset_packet_restrictions():
     """
     Autouse feature to make sure tests have a clean slate for processing.
     """
-    actions.packet.Packet.reset_restrictions()
+    layers.packet.Packet.reset_restrictions()
 
 
 @pytest.mark.tryfirst
