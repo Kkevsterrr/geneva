@@ -446,7 +446,7 @@ def main(args):
                      log_level=args["log"],
                      in_queue_num=args["in_queue_num"],
                      out_queue_num=args["out_queue_num"],
-                     save_seen_packets=args["no-save-packets"])
+                     save_seen_packets=args["no_save_packets"])
         eng.initialize_nfqueue()
         while True:
             time.sleep(0.5)
