@@ -331,7 +331,7 @@ def main(args):
                      output_directory = args.get("output_directory"),
                      server_side=args.get("server_side"),
                      log_level=args["log"],
-                     demo_mode=args["demo-mode"])
+                     demo_mode=args["demo_mode"])
         eng.initialize_nfqueue()
         while True:
             time.sleep(0.5)
