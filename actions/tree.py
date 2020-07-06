@@ -24,11 +24,34 @@ class ActionTree():
     """
 
     def __init__(self, direction, trigger=None):
+        """
+        Creates this action tree.
+
+        Args:
+            direction (str): Direction this tree is facing ("out", "in")
+            trigger (:obj:`actions.trigger.Trigger`): Trigger to use with this tree
+        """
         self.trigger = trigger
         self.action_root = None
         self.direction = direction
         self.environment_id = None
         self.ran = False
+
+    def initialize(self, num_actions, environment_id, allow_terminal=True, disabled=None):
+        """
+        Sets up this action tree with a given number of random actions.
+        Note that the returned action trees may have less actions than num_actions
+        if terminal actions are used.
+        """
+        self.environment_id = environment_id
+        self.trigger = actions.trigger.Trigger(None, None, None, environment_id=environment_id)
+        if not allow_terminal or random.random() > 0.1:
+            allow_terminal = False
+
+        for _ in range(num_actions):
+            new_action = self.get_rand_action(self.direction, disabled=disabled)
+            self.add_action(new_action)
+        return self
 
     def __iter__(self):
         """
@@ -222,8 +245,8 @@ class ActionTree():
             if not node.right:
                 yield right_packet
 
-            # If we have a left action and were given a packet to pass on, run
-            # on the left packet
+            # If we have a right action and were given a packet to pass on, run
+            # on the right packet
             if node.right and right_packet:
                 for rpacket in self.do_run(node.right, right_packet, logger):
                     yield rpacket
@@ -383,6 +406,22 @@ class ActionTree():
                     break
         return action_added
 
+    def get_rand_action(self, direction, request=None, allow_terminal=True, disabled=None):
+        """
+        Retrieves and initializes a random action that can run in the given direction.
+        """
+        pick = random.random()
+        action_options = actions.action.Action.get_actions(direction, disabled=disabled, allow_terminal=allow_terminal)
+        # Check to make sure there are still actions available to use
+        assert action_options, "No actions were available"
+        act_dict = {}
+        all_opts = []
+        for action_name, act_cls in action_options:
+            act_dict[action_name] = act_cls
+            all_opts += ([act_cls] * act_cls.frequency)
+        new_action = act_dict.get(request, random.choice(all_opts))
+        return new_action(environment_id=self.environment_id)
+
     def remove_one(self):
         """
         Removes a random leaf from the tree.
@@ -391,6 +430,26 @@ class ActionTree():
             return False
         action = random.choice(self)
         return self.remove_action(action)
+
+    def mutate(self):
+        """
+        Mutates this action tree with respect to a given direction.
+        """
+        pick = random.uniform(0, 1)
+        if pick < 0.20 or not self.action_root:
+            new_action = self.get_rand_action(direction=self.direction)
+            self.add_action(new_action)
+        elif pick < 0.65 and self.action_root:
+            action = random.choice(self)
+            action.mutate(environment_id=self.environment_id)
+        # If this individual has never been run under the evaluator,
+        # or if it ran and it failed, it won't have an environment_id,
+        # which means it has no saved packets to read from.
+        elif pick < 0.80 and self.environment_id:
+            self.trigger.mutate(self.environment_id)
+        else:
+            self.remove_one()
+        return self
 
     def choose_one(self):
         """
@@ -414,6 +473,40 @@ class ActionTree():
             if action.right == node:
                 return action, "right"
         return None, None
+
+    def swap(self, my_donation, other_tree, other_donation):
+        """
+        Swaps a node in this tree with a node in another tree.
+        """
+        parent, direction = self.get_parent(my_donation)
+        other_parent, other_direction = other_tree.get_parent(other_donation)
+        # If this tree is empty or I'm trying to donate my root
+        if not my_donation or not parent:
+            parent = self
+            direction = "action_root"
+        # if the other tree is empty or they are trying to donate their root
+        if not other_donation or not other_parent:
+            other_parent = other_tree
+            other_direction = "action_root"
+
+        setattr(parent, direction, other_donation)
+        setattr(other_parent, other_direction, my_donation)
+
+        return True
+
+    def mate(self, other_tree):
+        """
+        Mates this tree with another tree.
+        """
+        # If both trees are empty, nothing to do
+        if not self.action_root and not other_tree.action_root:
+            return False
+
+        # Chose an action node in this tree to swap
+        my_swap_node = self.choose_one()
+        other_swap_node = other_tree.choose_one()
+
+        return self.swap(my_swap_node, other_tree, other_swap_node)
 
     def pretty_print_help(self, root, visual=False, parent=None):
         """
@@ -447,6 +540,7 @@ class ActionTree():
                 newroot.right = anytree.Node(' ===> ', parent=newroot)
 
         return newroot
+
 
     def pretty_print(self, visual=False):
         """

@@ -1,7 +1,18 @@
 from actions.action import Action
 
 class DropAction(Action):
+    """
+    Geneva action to drop the given packet.
+    """
+    frequency = 1
+
     def __init__(self, environment_id=None):
+        """
+        Initializes this drop action.
+
+        Args:
+            environment_id (str, optional): Environment ID of the strategy we are a part of
+        """
         Action.__init__(self, "drop", "both")
         self.terminal = True
         self.branching = False

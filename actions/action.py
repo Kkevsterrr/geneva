@@ -1,7 +1,5 @@
 """
-Action
-
-Geneva object for defining a packet-level action.
+Geneva superclass object for defining a packet-level action.
 """
 
 import inspect
@@ -17,16 +15,24 @@ ACTION_CACHE["in"] = {}
 ACTION_CACHE["out"] = {}
 BASEPATH = os.path.sep.join(os.path.dirname(os.path.abspath(__file__)).split(os.path.sep)[:-1])
 
+
 class Action():
     """
     Defines the superclass for a Geneva Action.
     """
     # Give each Action a unique ID - this is needed for graphing/visualization
     ident = 0
+    # Each Action has a 'frequency' field - this defines how likely it is to be chosen
+    # when a new action is chosen
+    frequency = 0
 
     def __init__(self, action_name, direction):
         """
         Initializes this action object.
+
+        Args:
+            action_name (str): Name of this action ("duplicate")
+            direction (str): Direction of this action ("out", "both", "in")
         """
         self.enabled = True
         self.action_name = action_name
@@ -45,6 +51,12 @@ class Action():
         """
         Returns whether this action applies to the given direction, as
         branching actions are not supported on inbound trees.
+
+        Args:
+            direction (str): Direction to check if this action applies ("out", "in", "both")
+
+        Returns:
+            bool: whether or not this action can be used to a given direction
         """
         if direction == self.direction or self.direction == "both":
             return True
@@ -67,6 +79,14 @@ class Action():
         Dynamically imports all of the Action classes in this directory.
 
         Will only return terminal actions if terminal is set to True.
+
+        Args:
+            direction (str): Limit imported actions to just those that can run to this direction ("out", "in", "both")
+            disabled (list, optional): list of actions that are disabled
+            allow_terminal (bool): whether or not terminal actions ("drop") should be imported
+
+        Returns:
+            dict: Dictionary of imported actions
         """
         if disabled is None:
             disabled = []
@@ -83,7 +103,6 @@ class Action():
             ACTION_CACHE[direction][terminal] = {}
         else:
             return ACTION_CACHE[direction][terminal]
-
 
         collected_actions = []
         # Get the base path for the project relative to this file
@@ -117,6 +136,14 @@ class Action():
     def parse_action(str_action, direction, logger):
         """
         Parses a string action into the action object.
+
+        Args:
+            str_action (str): String representation of an action to parse
+            direction (str): Limit actions searched through to just those that can run to this direction ("out", "in", "both")
+            logger (:obj:`logging.Logger`): a logger to log with
+
+        Returns:
+            :obj:`action.Action`: A parsed action object
         """
         # Collect all viable actions that can run for each respective direction
         outs = Action.get_actions("out")
