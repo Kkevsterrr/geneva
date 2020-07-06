@@ -135,7 +135,7 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     log_prefix = "[%s] " % log_name.upper()
     formatter = logging.Formatter("%(asctime)s %(levelname)s:" + log_prefix + "%(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     file_formatter = logging.Formatter(log_prefix + "%(asctime)s %(message)s")
-    fh.setFormatter(fileatter)
+    fh.setFormatter(file_formatter)
     logger.addHandler(fh)
 
     ch = logging.StreamHandler()
@@ -229,7 +229,6 @@ class CustomAdapter(logging.LoggerAdapter):
 
             msg = msg.replace(ip, self.ips[ip])
         
-        return msg, kwargs
         return msg, tuple(new_args), kwargs
 
 def close_logger(logger):
