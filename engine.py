@@ -43,7 +43,8 @@ class Engine():
                        in_queue_num=None,
                        out_queue_num=None,
                        forwarder=None,
-                       save_seen_packets=True):
+                       save_seen_packets=True,
+                       demo_mode=False):
         """
         Args:
             server_port (int): The port the engine will monitor
@@ -55,6 +56,7 @@ class Engine():
             in_queue_num (int, None): override the netfilterqueue number used for inbound packets. Used for running multiple instances of the engine at the same time. Defaults to None.
             out_queue_num (int, None): override the netfilterqueue number used for outbound packets. Used for running multiple instances of the engine at the same time. Defaults to None.
             save_seen_packets (bool, True): whether or not the engine should record and save packets it sees while running. Defaults to True, but it is recommended this be disabled on higher throughput systems.
+            demo_mode (bool, False): whether to replace IPs in log messages with random IPs to hide sensitive IP addresses.
         """
         self.server_port = server_port
         # whether the engine is running on the server or client side.
@@ -86,7 +88,8 @@ class Engine():
                                                __name__,
                                                "engine",
                                                self.environment_id,
-                                               log_level=log_level)
+                                               log_level=log_level,
+                                               demo_mode=demo_mode)
         # Warn if these are not provided
         if not environment_id:
             self.logger.warning("No environment ID given, one has been generated (%s)", self.environment_id)
@@ -421,6 +424,7 @@ def get_args():
     parser.add_argument('--no-save-packets', action='store_false', help='Disables recording captured packets')
     parser.add_argument("--in-queue-num", action="store", help="NfQueue number for incoming packets", default=1, type=int)
     parser.add_argument("--out-queue-num", action="store", help="NfQueue number for outgoing packets", default=None, type=int)
+    parser.add_argument("--demo-mode", action='store_true', help="Replaces all IPs with dummy IPs in log messages so as not to reveal sensitive IP addresses")
 
     args = parser.parse_args()
     return args
@@ -446,7 +450,8 @@ def main(args):
                      log_level=args["log"],
                      in_queue_num=args["in_queue_num"],
                      out_queue_num=args["out_queue_num"],
-                     save_seen_packets=args["no_save_packets"])
+                     save_seen_packets=args["no_save_packets"],
+                     demo_mode=args["demo_mode"])
         eng.initialize_nfqueue()
         while True:
             time.sleep(0.5)

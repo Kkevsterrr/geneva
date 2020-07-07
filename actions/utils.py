@@ -9,6 +9,10 @@ import string
 import sys
 import random
 import urllib.parse
+import re
+import socket
+import random
+import struct
 
 import actions.action
 import actions.trigger
@@ -102,7 +106,8 @@ def parse(requested_trees, logger):
     return strat
 
 
-def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level="DEBUG"):
+
+def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level="DEBUG", demo_mode=False):
     """
     Configures and returns a logger.
     """
@@ -138,8 +143,93 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     ch.setLevel(log_level)
     CONSOLE_LOG_LEVEL = log_level.lower()
     logger.addHandler(ch)
-    return logger
+    return CustomAdapter(logger, {}) if demo_mode else logger
 
+class CustomAdapter(logging.LoggerAdapter):
+    """
+    Used for demo mode, to change sensitive IP addresses where necessary. Can be used (mostly) like a regular logger.
+    """
+    regex = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
+
+    def __init__(self, logger, extras):
+        super().__init__(logger, extras)
+        self.handlers = logger.handlers
+        self.ips = {}
+    
+    def debug(self, msg, *args, **kwargs):
+        """
+        Print a debug message, uses logger.debug.
+        """
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.debug(msg, *args, **kwargs)
+
+    def info(self, msg, *args, **kwargs):
+        """
+        Print an info message, uses logger.info.
+        """
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.info(msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        """
+        Print a warning message, uses logger.warning.
+        """
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.warning(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        """
+        Print an error message, uses logger.error.
+        """
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.error(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        """
+        Print a critical message, uses logger.critical.
+        """
+        msg, args, kwargs = self.process(msg, args, kwargs)
+
+        self.logger.critical(msg, *args, **kwargs)
+
+    def get_ip(self, ip):
+        """
+        Lookup the assigned random IP for a given real IP.
+        If no random IP exists, a new one is created and a message is logged indicating it.
+        """
+        if ip not in self.ips:
+            random_ip = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+            self.logger.info("Registering new random IP: %s" % random_ip)
+            self.ips[ip] = random_ip
+
+    def process(self, msg, args, kwargs):
+        """
+        Modify the log message to replace any instance of an IP in msg or args with its assigned random IP.
+        """
+        new_args = []
+        for arg in args:
+            if type(arg) == str:
+                for ip in self.regex.findall(arg):
+                    new_ip = self.get_ip(ip)
+
+                    arg = arg.replace(ip, self.ips[ip])
+            
+            new_args.append(arg)
+
+        for ip in self.regex.findall(msg):
+            if ip not in self.ips:
+                random_ip = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+                self.logger.debug("Registering new random IP: %s" % random_ip)
+                self.ips[ip] = random_ip
+            new_ip = self.get_ip(ip)
+
+            msg = msg.replace(ip, self.ips[ip])
+        
+        return msg, tuple(new_args), kwargs
 
 def close_logger(logger):
     """
