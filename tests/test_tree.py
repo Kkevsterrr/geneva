@@ -7,6 +7,7 @@ import actions.drop
 import actions.tamper
 import actions.duplicate
 import actions.utils
+import layers.packet
 
 
 def test_init():
@@ -46,9 +47,9 @@ def test_check():
     a = actions.tree.ActionTree("out")
     logger = logging.getLogger("test")
     a.parse("[TCP:flags:RA]-tamper{TCP:flags:replace:S}-|", logger)
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert not a.check(p, logger)
-    p = actions.packet.Packet(IP(ttl=64)/TCP(flags="RA"))
+    p = layers.packet.Packet(IP(ttl=64)/TCP(flags="RA"))
     assert a.check(p, logger)
     assert a.remove_one()
     assert a.check(p, logger)
@@ -56,7 +57,7 @@ def test_check():
     assert a.check(p, logger)
     a.parse("[IP:ttl:64]-tamper{TCP:flags:replace:S}-|", logger)
     assert a.check(p, logger)
-    p = actions.packet.Packet(IP(ttl=15)/TCP(flags="RA"))
+    p = layers.packet.Packet(IP(ttl=15)/TCP(flags="RA"))
     assert not a.check(p, logger)
 
 
@@ -67,11 +68,11 @@ def test_scapy():
     a = actions.tree.ActionTree("out")
     logger = logging.getLogger("test")
     a.parse("[TCP:reserved:0]-tamper{TCP:flags:replace:S}-|", logger)
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(p, logger)
     packets = a.run(p, logger)
     assert packets[0][TCP].flags == "S"
-    p = actions.packet.Packet(IP()/TCP(flags="A"))
+    p = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(p, logger)
     a.parse("[TCP:reserved:0]-tamper{TCP:chksum:corrupt}-|", logger)
     packets = a.run(p, logger)
@@ -126,7 +127,7 @@ def test_pretty_print_send():
     assert a.pretty_print() == correct_string
 
 
-def test_pretty_print():
+def test_pretty_print(logger):
     """
     Print complex tree, although difficult to test
     """
@@ -161,7 +162,7 @@ def test_pretty_print():
     assert a.pretty_print(visual=True)
     assert os.path.exists("tree.png")
     os.remove("tree.png")
-    a.parse("[TCP:flags:0]-|", logging.getLogger("test"))
+    a.parse("[TCP:flags:0]-|", logger)
     a.pretty_print(visual=True) # Empty action tree
     assert not os.path.exists("tree.png")
 
@@ -261,13 +262,11 @@ def test_tree():
     tamper = actions.tamper.TamperAction()
     tamper2 = actions.tamper.TamperAction()
     duplicate = actions.duplicate.DuplicateAction()
-    assert a.get_parent(None) == (None, None)
 
     a.add_action(None)
     a.add_action(tamper)
     assert a.get_slots() == 1
     a.add_action(tamper2)
-    assert a.get_parent(tamper2) == (tamper, "left")
     assert a.get_slots() == 1
     a.add_action(duplicate)
     assert a.get_slots() == 2
@@ -276,7 +275,6 @@ def test_tree():
     a = actions.tree.ActionTree("out", trigger=t)
     drop = actions.drop.DropAction()
     a.add_action(drop)
-    assert a.get_parent(drop) == (None, None)
     assert a.get_slots() == 0
     add_success = a.add_action(tamper)
     assert not add_success
@@ -294,6 +292,8 @@ def test_tree():
         print(str(a))
     assert len(a) == 2
     assert a.get_slots() == 2
+    for _ in range(100):
+        assert str(a.get_rand_action("out", request="DropAction")) == "drop"
 
 
 def test_remove():
@@ -326,7 +326,6 @@ def test_remove():
     duplicate.left = tamper2
     duplicate.right = tamper3
     a.add_action(duplicate)
-    assert a.get_parent(tamper3) == (duplicate, "right")
     assert len(a) == 4
     assert a.remove_action(duplicate)
     assert duplicate not in a
@@ -426,7 +425,7 @@ def test_run():
     duplicate2 = actions.duplicate.DuplicateAction()
     drop = actions.drop.DropAction()
 
-    packet = actions.packet.Packet(IP()/TCP())
+    packet = layers.packet.Packet(IP()/TCP())
     a.add_action(tamper)
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 1
@@ -435,7 +434,7 @@ def test_run():
     a.add_action(tamper2)
     print(str(a))
 
-    packet = actions.packet.Packet(IP()/TCP())
+    packet = layers.packet.Packet(IP()/TCP())
     assert not a.add_action(tamper), "tree added duplicate action"
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 1
@@ -446,7 +445,7 @@ def test_run():
     a.remove_action(tamper2)
     a.remove_action(tamper)
     a.add_action(duplicate)
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
     assert None not in packets
@@ -456,7 +455,8 @@ def test_run():
 
     duplicate.left = tamper
     duplicate.right = tamper2
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
+    print("ABUT TO RUN")
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
     assert None not in packets
@@ -468,7 +468,7 @@ def test_run():
     print(str(a))
 
     tamper.left = duplicate2
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 3
     assert None not in packets
@@ -478,7 +478,7 @@ def test_run():
     print(str(a))
 
     tamper2.left = drop
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logging.getLogger("test"))
     assert len(packets) == 2
     assert None not in packets
@@ -488,13 +488,13 @@ def test_run():
 
     assert a.remove_action(duplicate2)
     tamper.left = actions.drop.DropAction()
-    packet = actions.packet.Packet(IP()/TCP(flags="RA"))
+    packet = layers.packet.Packet(IP()/TCP(flags="RA"))
     packets = a.run(packet, logger )
     assert len(packets) == 0
     print(str(a))
 
     a.parse("[TCP:flags:A]-duplicate(tamper{TCP:flags:replace:R}(tamper{TCP:chksum:replace:14239},),duplicate(tamper{TCP:flags:replace:S},))-|", logger)
-    packet = actions.packet.Packet(IP()/TCP(flags="A"))
+    packet = layers.packet.Packet(IP()/TCP(flags="A"))
     assert a.check(packet, logger)
     packets = a.run(packet, logger)
     assert len(packets) == 3
@@ -523,6 +523,142 @@ def test_index():
     assert a.add_action(tamper3)
     assert a[-1] == tamper3
     assert not a[-11]
+
+def test_mate():
+    """
+    Tests mate primitive
+    """
+    logger = logging.getLogger("test")
+    t = actions.trigger.Trigger("field", "flags", "TCP")
+    a = actions.tree.ActionTree("out", trigger=t)
+    assert not a.choose_one()
+    tamper = actions.tamper.TamperAction(field="flags", tamper_type="replace", tamper_value="S")
+    tamper2 = actions.tamper.TamperAction(field="flags", tamper_type="replace", tamper_value="R")
+    duplicate = actions.duplicate.DuplicateAction()
+    duplicate2 = actions.duplicate.DuplicateAction()
+    drop = actions.drop.DropAction()
+    other_a = actions.tree.ActionTree("out", trigger=t)
+    assert not a.mate(other_a), "Can't mate empty trees"
+    assert a.add_action(tamper)
+    assert other_a.add_action(tamper2)
+    assert a.choose_one() == tamper
+    assert other_a.choose_one() == tamper2
+    assert a.get_parent(tamper) == (None, None)
+    assert other_a.get_parent(tamper2) == (None, None)
+    assert a.add_action(duplicate)
+    assert a.get_parent(duplicate) == (tamper, "left")
+    duplicate.right = drop
+    assert a.get_parent(drop) == (duplicate, "right")
+    assert other_a.add_action(duplicate2)
+    # Test mating a full tree with a full tree
+    assert str(a) == "[TCP:flags:0]-tamper{TCP:flags:replace:S}(duplicate(,drop),)-|"
+    assert str(other_a) == "[TCP:flags:0]-tamper{TCP:flags:replace:R}(duplicate,)-|"
+    assert a.swap(duplicate, other_a, duplicate2)
+    assert str(a).strip() == "[TCP:flags:0]-tamper{TCP:flags:replace:S}(duplicate,)-|"
+    assert str(other_a).strip() == "[TCP:flags:0]-tamper{TCP:flags:replace:R}(duplicate(,drop),)-|"
+    assert len(a) == 2
+    assert len(other_a) == 3
+    assert duplicate2 not in other_a
+    assert duplicate not in a
+    assert tamper.left == duplicate2
+    assert tamper2.left == duplicate
+    assert other_a.get_parent(duplicate) == (tamper2, "left")
+    assert a.get_parent(duplicate2) == (tamper, "left")
+    assert other_a.get_parent(drop) == (duplicate, "right")
+    assert a.get_parent(None) == (None, None)
+
+    # Test mating two trees with just root nodes
+    t = actions.trigger.Trigger("field", "flags", "TCP")
+    a = actions.tree.ActionTree("out", trigger=t)
+    assert not a.choose_one()
+    tamper = actions.tamper.TamperAction(field="flags", tamper_type="replace", tamper_value="S")
+    tamper2 = actions.tamper.TamperAction(field="flags", tamper_type="replace", tamper_value="R")
+    duplicate = actions.duplicate.DuplicateAction()
+    duplicate2 = actions.duplicate.DuplicateAction()
+    drop = actions.drop.DropAction()
+    other_a = actions.tree.ActionTree("out", trigger=t)
+    assert not a.mate(other_a)
+    assert a.add_action(duplicate)
+    assert other_a.add_action(duplicate2)
+    assert a.mate(other_a)
+    assert a.action_root == duplicate2
+    assert other_a.action_root == duplicate
+    assert not duplicate.left and not duplicate.right
+    assert not duplicate2.left and not duplicate2.right
+    # Confirm that no nodes have been aliased or connected between the trees
+    for node in a:
+        for other_node in other_a:
+            assert not node.left == other_node
+            assert not node.right == other_node
+
+    # Test mating two trees where one is empty
+    assert a.remove_action(duplicate2)
+    # This should swap the duplicate action to be the action root of the other tree
+    assert str(a) == "[TCP:flags:0]-|"
+    assert str(other_a) == "[TCP:flags:0]-duplicate-|"
+    assert a.mate(other_a)
+    assert not other_a.action_root
+    assert a.action_root == duplicate
+    assert len(a) == 1
+    assert len(other_a) == 0
+    # Confirm that no nodes have been aliased or connected between the trees
+    for node in a:
+        for other_node in other_a:
+            if other_node:
+                assert not node.left == other_node
+                assert not node.right == other_node
+
+    assert a.parse("[TCP:flags:0]-tamper{TCP:flags:replace:S}(duplicate(,drop),)-|", logger)
+    drop = a.action_root.left.right
+    assert str(drop) == "drop"
+    # Note that this will return a valid ActionTree, but because it is empty,
+    # it is technically a False-y value, as it's length is 0
+    assert other_a.parse("[TCP:flags:0]-|", logger) == other_a
+
+    a.swap(drop, other_a, None)
+    assert other_a.action_root == drop
+    assert not a.action_root.left.right
+    assert str(other_a) == "[TCP:flags:0]-drop-|"
+    assert str(a) == "[TCP:flags:0]-tamper{TCP:flags:replace:S}(duplicate,)-|"
+    other_a.swap(drop, a, a.action_root.left)
+    # Confirm that no nodes have been aliased or connected between the trees
+    for node in a:
+        for other_node in other_a:
+            if other_node:
+                assert not node.left == other_node
+                assert not node.right == other_node
+
+    assert str(other_a) == "[TCP:flags:0]-duplicate-|"
+    assert str(a) == "[TCP:flags:0]-tamper{TCP:flags:replace:S}(drop,)-|"
+
+    a.parse("[TCP:flags:0]-drop-|", logger)
+    other_a.parse("[TCP:flags:0]-duplicate(drop,drop)-|", logger)
+    a_drop = a.action_root
+    other_duplicate = other_a.action_root
+    a.swap(a_drop, other_a, other_duplicate)
+    print(str(a))
+    print(str(other_a))
+    assert str(other_a) == "[TCP:flags:0]-drop-|"
+    assert str(a) == "[TCP:flags:0]-duplicate(drop,drop)-|"
+    duplicate = actions.duplicate.DuplicateAction()
+    duplicate2 = actions.duplicate.DuplicateAction()
+    drop = actions.drop.DropAction()
+    drop2 = actions.drop.DropAction()
+    drop3 = actions.drop.DropAction()
+    a = actions.tree.ActionTree("out", trigger=t)
+    a.add_action(duplicate)
+    a.add_action(drop)
+    a.add_action(drop2)
+    assert str(a) == "[TCP:flags:0]-duplicate(drop,drop)-|"
+    assert a.get_slots() == 0
+    other_a = actions.tree.ActionTree("out", trigger=t)
+    other_a.add_action(drop3)
+    a.swap(drop, other_a, drop3)
+    assert str(a) == "[TCP:flags:0]-duplicate(drop,drop)-|"
+    a.swap(drop3, other_a, drop)
+    assert str(a) == "[TCP:flags:0]-duplicate(drop,drop)-|"
+
+    assert a.mate(other_a)
 
 
 def test_choose_one():

@@ -15,8 +15,19 @@ class TraceAction(Action):
     TraceAction is an experimental action that is never used
     in actual evolution
     """
+    # Do not select Trace during evolutions
+    frequency = 0
     def __init__(self, start_ttl=1, end_ttl=64, environment_id=None):
+        """
+        Initializes the trace action.
+
+        Args:
+            start_ttl (int): Starting TTL to use
+            end_ttl (int): TTL to end with
+            environment_id (str, optional): Environment ID associated with the strategy we are a part of
+        """
         Action.__init__(self, "trace", "out")
+        self.enabled = True
         self.terminal = True
         self.branching = False
         self.start_ttl = start_ttl
@@ -40,7 +51,7 @@ class TraceAction(Action):
             return packet, None
 
         if self.ran:
-            logger.debug("  - trace action already ran. Dropping given traffic. To reset this action, restart the engine.")
+            logger.debug("  - trace action already ran. Dropping given traffic.")
             return None, None
 
         self.ran = True

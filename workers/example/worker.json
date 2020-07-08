@@ -1,0 +1,16 @@
+{
+    "name": "example",
+    "ip": "0.0.0.0",
+    "hostname": "example.com",
+    "username": "user",
+    "password": null,
+    "port": 22,
+    "python": "python3",
+    "city": "mycensoredcity",
+    "keyfile": "example.pem",
+    "country": "mycensoredcountry",
+    "geneva_path": "evolving-evasion",
+    "censored": true,
+    "active": true,
+    "provider": null
+}

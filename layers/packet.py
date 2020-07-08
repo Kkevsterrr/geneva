@@ -1,15 +1,19 @@
 import copy
 import random
 
-import actions.layer
-
+import layers.layer
+import layers.ip_layer
+import layers.tcp_layer
+import layers.udp_layer
+import layers.dns_layer
+import layers.dnsqr_layer
 
 _SUPPORTED_LAYERS = [
-    actions.layer.IPLayer,
-    actions.layer.TCPLayer,
-    actions.layer.UDPLayer,
-    actions.layer.DNSLayer,
-    actions.layer.DNSQRLayer
+    layers.ip_layer.IPLayer,
+    layers.tcp_layer.TCPLayer,
+    layers.udp_layer.UDPLayer,
+    layers.dns_layer.DNSLayer,
+    layers.dnsqr_layer.DNSQRLayer
 ]
 SUPPORTED_LAYERS = _SUPPORTED_LAYERS
 
@@ -110,11 +114,10 @@ class Packet():
         """
         iter_packet = self.packet
         while iter_packet:
-            if iter_packet.name.lower() == "raw":
-                return
             parsed_layer = Packet.parse_layer(iter_packet)
             if parsed_layer:
-                yield parsed_layer
+                if parsed_layer.name != "Raw":
+                    yield parsed_layer
                 iter_packet = parsed_layer.get_next_layer()
             else:
                 iter_packet = iter_packet.payload
@@ -327,6 +330,6 @@ class Packet():
         """
         Performs DNS decompression, if applicable. Returns a new packet.
         """
-        self.packet = actions.layer.DNSLayer.dns_decompress(self.packet, logger)
+        self.packet = layers.dns_layer.DNSLayer.dns_decompress(self.packet, logger)
         self.layers = self.setup_layers()
         return self

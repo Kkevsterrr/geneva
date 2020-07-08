@@ -9,8 +9,12 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     def get_args
-    def main
+    except KeyboardInterrupt:
 ignore_errors = True
 omit =
+    experimental/*
+    experimental/smtp/*
     tests/*
-    examples/*
+    censors/*
+    censor_driver.py
+    graph.py
