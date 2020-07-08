@@ -163,7 +163,7 @@ If you like the work or plan to use it in your projects, please follow the guide
 
 ## Paper
 
-See [our paper](http://geneva.cs.umd.edu/papers/geneva_ccs19.pdf) from CCS for an in-depth dive into how it works.
+See [our paper](http://geneva.cs.umd.edu/papers/geneva_ccs19.pdf) from CCS or the rest of [our papers and talks](http://geneva.cs.umd.edu/papers/) for an in-depth dive into how Geneva works and how it can be applied.
 
 ## Contributors
 
