@@ -61,7 +61,7 @@ Iran's protocol whitelister was a recently deployed new censorship mechanism to
 censor non-whitelisted protocols on certain ports (53, 80, 443). We deployed
 Geneva against the whitelister, and discovered multiple ways to evade it in just
 one evolution of the genetic algorithm. (The results of that investigation is
-located `here <https://geneva.cs.umd.edu/posts/iran-whitelister>`_). 
+located `here <https://geneva.cs.umd.edu/posts/iran-whitelister/>`_). 
 
 The whitelister worked by checking the first 2 packets of a flow, and if they
 did not match a fingerprint, it would destroy the flow. 
