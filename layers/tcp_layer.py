@@ -1,3 +1,4 @@
+import os
 import random
 import binascii
 from layers.layer import Layer

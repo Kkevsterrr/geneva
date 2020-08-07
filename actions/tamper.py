@@ -21,7 +21,7 @@ import random
 SUPPORTED_PRIMITIVES = ["corrupt", "replace", "add", "compress"]
 
 # Tamper primitives we can mutate to by default
-ACTIVATED_PRIMITIVES = ["replace", "corrupt", "add"]
+ACTIVATED_PRIMITIVES = ["replace", "corrupt"]
 
 
 class TamperAction(Action):
