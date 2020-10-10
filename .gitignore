@@ -1,2 +1,4 @@
 __pycache__
 actions/__pycache__
+trials/*
+.vscode/
