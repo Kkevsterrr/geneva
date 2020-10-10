@@ -72,7 +72,8 @@ class HTTPClient(ClientPlugin):
         if port != 80:
             url += ":%s" % str(port)
 
-        url += "?q=%s" % args.get("bad_word")
+        if args.get("bad_word"):
+            url += "?q=%s" % args.get("bad_word")
 
         injected_http = args.get("injected_http_contains")
         try:
