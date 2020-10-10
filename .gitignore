@@ -2,3 +2,5 @@ __pycache__
 actions/__pycache__
 trials/*
 .vscode/
+workers/*
+!workers/example
