@@ -25,6 +25,8 @@ import censors.censor_driver
 # Suppress unfixed Paramiko warnings (see Paramiko issue #1386)
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
+# Placeholder for a docker import (see below why we cannot import docker here)
+docker = None
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = BASEPATH
 
@@ -755,9 +757,16 @@ class Evaluator():
         paramiko_logger = paramiko.util.logging.getLogger()
         paramiko_logger.setLevel(logging.WARN)
         worker = actions.utils.get_worker(self.external_client, self.logger)
+
         if self.use_docker:
             worker["ip"] = "0.0.0.0"
-        self.logger.debug("Connecting to worker %s@%s" % (worker["username"], worker["ip"]))
+
+        # Pull the destination to connect to this worker. Preference hostnames over IP addresses.
+        destination = worker["hostname"]
+        if not destination:
+            destination = worker["ip"]
+
+        self.logger.debug("Connecting to worker %s@%s" % (worker["username"], destination))
         remote = paramiko.SSHClient()
         remote.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         max_tries = 5
@@ -766,12 +775,12 @@ class Evaluator():
             try:
                 if "keyfile" in worker:
                     k = paramiko.RSAKey.from_private_key_file(worker["keyfile"])
-                    remote.connect(worker["ip"], username=worker["username"], pkey=k, port=worker["port"], timeout=60)
+                    remote.connect(destination, username=worker["username"], pkey=k, port=worker["port"], timeout=60)
                 else:
-                    remote.connect(worker["ip"], username=worker["username"], password=worker["password"], port=worker["port"], timeout=60)
+                    remote.connect(destination, username=worker["username"], password=worker["password"], port=worker["port"], timeout=60)
                 break
             except socket.timeout:
-                self.logger.error("Could not connect to worker %s" % worker["ip"])
+                self.logger.error("Could not connect to worker %s" % destination)
                 i += 1
         return remote
 
