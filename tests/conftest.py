@@ -63,6 +63,7 @@ def client_worker(request):
     info_path = os.path.join(worker_path, "worker.json")
     worker_dict = {
         "ip" : "127.0.0.1",
+        "hostname" : "",
         "port" : 2222,
         "username" : "root",
         "password" : "Docker!",
