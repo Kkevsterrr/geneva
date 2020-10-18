@@ -84,6 +84,9 @@ class HTTPClient(ClientPlugin):
                 fitness -= 90
             else:
                 fitness += 100
+        except requests.exceptions.ConnectTimeout as exc:
+            logger.exception("Socket timeout.")
+            fitness -= 100
         except (requests.exceptions.ConnectionError, ConnectionResetError) as exc:
             logger.exception("Connection RST.")
             fitness -= 90
