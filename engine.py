@@ -228,14 +228,14 @@ class Engine():
             add_or_remove = "D"
         cmds = []
         for proto in ["tcp", "udp"]:
-            cmds += ["iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+            cmds += ["iptables -%s %s -p %s --%s %d -o %s -j NFQUEUE --queue-num %d" %
                     (add_or_remove, out_chain, proto, port1, self.server_port, self.interface, self.out_queue_num),
                     "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
                     (add_or_remove, in_chain, proto, port2, self.server_port, self.interface, self.in_queue_num)]
             # If this machine is acting as a middlebox, we need to add the same rules again
             # in the opposite direction so that we can pass packets back and forth
             if self.forwarder:
-                cmds += ["iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+                cmds += ["iptables -%s %s -p %s --%s %d -o %s -j NFQUEUE --queue-num %d" %
                     (add_or_remove, out_chain, proto, port2, self.server_port, self.interface, self.out_queue_num),
                     "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
                     (add_or_remove, in_chain, proto, port1, self.server_port, self.interface, self.in_queue_num)]
