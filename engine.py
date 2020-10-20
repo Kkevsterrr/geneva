@@ -44,6 +44,7 @@ class Engine():
                        out_queue_num=None,
                        forwarder=None,
                        save_seen_packets=True,
+                       interface=None,
                        demo_mode=False):
         """
         Args:
@@ -56,6 +57,7 @@ class Engine():
             in_queue_num (int, None): override the netfilterqueue number used for inbound packets. Used for running multiple instances of the engine at the same time. Defaults to None.
             out_queue_num (int, None): override the netfilterqueue number used for outbound packets. Used for running multiple instances of the engine at the same time. Defaults to None.
             save_seen_packets (bool, True): whether or not the engine should record and save packets it sees while running. Defaults to True, but it is recommended this be disabled on higher throughput systems.
+            interface (str, None): the interface the engine should bind to
             demo_mode (bool, False): whether to replace IPs in log messages with random IPs to hide sensitive IP addresses.
         """
         self.server_port = server_port
@@ -89,7 +91,6 @@ class Engine():
                                                "engine",
                                                self.environment_id,
                                                log_level=log_level,
-                                               iface=iface,
                                                demo_mode=demo_mode)
         # Warn if these are not provided
         if not environment_id:
@@ -117,8 +118,8 @@ class Engine():
         self.in_nfqueue_thread = None
         self.censorship_detected = False
 
-        self.interface = iface
-        if not iface:
+        self.interface = interface
+        if not interface:
             self.interface = actions.utils.get_interface()
 
         # Specifically define an L3Socket to send our packets. This is an optimization
@@ -458,7 +459,7 @@ def main(args):
                      in_queue_num=args["in_queue_num"],
                      out_queue_num=args["out_queue_num"],
                      save_seen_packets=args["no_save_packets"],
-                     iface=args["interface"],
+                     interface=args["interface"],
                      demo_mode=args["demo_mode"])
         eng.initialize_nfqueue()
         while True:
