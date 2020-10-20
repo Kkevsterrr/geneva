@@ -89,6 +89,7 @@ class Engine():
                                                "engine",
                                                self.environment_id,
                                                log_level=log_level,
+                                               iface=iface,
                                                demo_mode=demo_mode)
         # Warn if these are not provided
         if not environment_id:
@@ -115,11 +116,16 @@ class Engine():
         self.out_nfqueue_thread = None
         self.in_nfqueue_thread = None
         self.censorship_detected = False
+
+        self.interface = iface
+        if not iface:
+            self.interface = actions.utils.get_interface()
+
         # Specifically define an L3Socket to send our packets. This is an optimization
         # for scapy to send packets more quickly than using just send(), as under the hood
         # send() creates and then destroys a socket each time, imparting a large amount
         # of overhead.
-        self.socket = conf.L3socket(iface=actions.utils.get_interface())
+        self.socket = conf.L3socket(iface=self.interface)
 
     def __enter__(self):
         """
@@ -221,17 +227,17 @@ class Engine():
             add_or_remove = "D"
         cmds = []
         for proto in ["tcp", "udp"]:
-            cmds += ["iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port1, self.server_port, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port2, self.server_port, self.in_queue_num)]
+            cmds += ["iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, port1, self.server_port, self.interface, self.out_queue_num),
+                    "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, port2, self.server_port, self.interface, self.in_queue_num)]
             # If this machine is acting as a middlebox, we need to add the same rules again
             # in the opposite direction so that we can pass packets back and forth
             if self.forwarder:
-                cmds += ["iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port2, self.server_port, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port1, self.server_port, self.in_queue_num)]
+                cmds += ["iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, port2, self.server_port, self.interface, self.out_queue_num),
+                    "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, port1, self.server_port, self.interface, self.in_queue_num)]
 
         for cmd in cmds:
             self.logger.debug(cmd)
@@ -424,6 +430,7 @@ def get_args():
     parser.add_argument('--no-save-packets', action='store_false', help='Disables recording captured packets')
     parser.add_argument("--in-queue-num", action="store", help="NfQueue number for incoming packets", default=1, type=int)
     parser.add_argument("--out-queue-num", action="store", help="NfQueue number for outgoing packets", default=None, type=int)
+    parser.add_argument("--interface", action="store", help="Limit the engine to just this interface", default=None)
     parser.add_argument("--demo-mode", action='store_true', help="Replaces all IPs with dummy IPs in log messages so as not to reveal sensitive IP addresses")
 
     args = parser.parse_args()
@@ -451,6 +458,7 @@ def main(args):
                      in_queue_num=args["in_queue_num"],
                      out_queue_num=args["out_queue_num"],
                      save_seen_packets=args["no_save_packets"],
+                     iface=args["interface"],
                      demo_mode=args["demo_mode"])
         eng.initialize_nfqueue()
         while True:
