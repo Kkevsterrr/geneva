@@ -45,7 +45,7 @@ class ServerPlugin(Plugin):
                         choices=("debug", "info", "warning", "critical", "error"),
                         help="Sets the log level")
         parser.add_argument('--port', action='store', type=int, help='port to run this server on')
-        parser.add_argument('--interface', action='store_true', help='interface to run the engine on for server-side training')
+        parser.add_argument('--interface', action='store', help='interface to run the engine on for server-side training')
 
         parser.add_argument('--external-server', action='store_true', help="use an external server for testing.")
 

@@ -1,5 +1,6 @@
 import argparse
 import logging
+import netifaces
 import os
 import tempfile
 import subprocess
@@ -44,6 +45,12 @@ class HTTPServer(ServerPlugin):
         """
         Initializes the HTTP server.
         """
+        interface = args.get("interface")
+        bind_cmd = []
+        if interface:
+            bind_addr = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+            bind_cmd = ["--bind", bind_addr]
+
         # Create a temporary directory to run out of so we're not hosting files
         self.tmp_dir = tempfile.TemporaryDirectory()
 
@@ -55,8 +62,10 @@ class HTTPServer(ServerPlugin):
             stdout, stderr = None, None
 
         # Start the server
+        cmd = ["python3", "-m", "http.server", str(args.get('port'))]
+        cmd += bind_cmd
         try:
-            subprocess.check_call(["python3", "-m", "http.server", str(args.get('port'))], stderr=stderr, stdout=stdout, cwd=self.tmp_dir.name)
+            subprocess.check_call(cmd, stderr=stderr, stdout=stdout, cwd=self.tmp_dir.name)
         except subprocess.CalledProcessError as exc:
             logger.debug("Server exited: %s", str(exc))
 
