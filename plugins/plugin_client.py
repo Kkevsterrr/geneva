@@ -41,6 +41,7 @@ class ClientPlugin(Plugin):
                         choices=("debug", "info", "warning", "critical", "error"),
                         help="Sets the log level")
         parser.add_argument('--port', action='store', type=int, help='port to run this server on')
+        parser.add_argument('--interface', action='store', help='interface to run the engine on for client-side training')
 
         parser.add_argument('--wait-for-censor', action='store_true', help='send control packets to the censor to get startup confirmation')
 
@@ -60,6 +61,7 @@ class ClientPlugin(Plugin):
         eid = args.get("environment_id")
         use_engine = not args.get("no_engine")
         port = args.get("port")
+        interface = args.get("interface")
         server_side = args.get("server_side")
         assert port, "Need to specify a port in order to launch a sniffer"
 
@@ -69,7 +71,7 @@ class ClientPlugin(Plugin):
         with actions.sniffer.Sniffer(pcap_filename, port, logger) as sniff:
 
             # Conditionally initialize the engine
-            with engine.Engine(port, args.get("strategy"), server_side=False, environment_id=eid, output_directory=output_path, log_level=args.get("log", "info"), enabled=use_engine) as eng:
+            with engine.Engine(port, args.get("strategy"), server_side=False, environment_id=eid, output_directory=output_path, log_level=args.get("log", "info"), interface=interface, enabled=use_engine) as eng:
                 # Wait for the censor to start up, if one is running
                 if args.get("wait_for_censor"):
                     self.wait_for_censor(args.get("server"), port, eid, output_path)

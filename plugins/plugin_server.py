@@ -45,6 +45,7 @@ class ServerPlugin(Plugin):
                         choices=("debug", "info", "warning", "critical", "error"),
                         help="Sets the log level")
         parser.add_argument('--port', action='store', type=int, help='port to run this server on')
+        parser.add_argument('--interface', action='store_true', help='interface to run the engine on for server-side training')
 
         parser.add_argument('--external-server', action='store_true', help="use an external server for testing.")
 
@@ -70,6 +71,7 @@ class ServerPlugin(Plugin):
         eid = args["environment_id"]
         use_engine = not args.get("no_engine", False)
         port = args["port"]
+        interface = args.get("interface")
         server_side = args["server_side"]
         log_level = args["log"]
         strategy = args.get("strategy", "")
@@ -94,7 +96,7 @@ class ServerPlugin(Plugin):
         self.sniffer = actions.sniffer.Sniffer(pcap_filename, int(port), logger).__enter__()
 
         # Conditionally initialize the engine
-        self.engine = engine.Engine(port, strategy, server_side=True, environment_id=eid, output_directory=output_path, log_level=args.get("log", "info"), enabled=use_engine, forwarder=forwarder).__enter__()
+        self.engine = engine.Engine(port, strategy, server_side=True, environment_id=eid, output_directory=output_path, log_level=args.get("log", "info"), enabled=use_engine, interface=interface, forwarder=forwarder).__enter__()
 
         # Run the plugin
         self.server_proc = multiprocessing.Process(target=self.start_thread, args=(args, logger))
