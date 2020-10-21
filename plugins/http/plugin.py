@@ -137,7 +137,7 @@ class HTTPPluginRunner(Plugin):
 
         output_path = os.path.join(PROJECT_ROOT, evaluator.client_args.get("output_directory"))
 
-        with engine.Engine(port, args.get("strategy", ""), server_side=args["server_side"], environment_id=environment["id"], output_directory=output_path, log_level=args.get("log", "debug"), enabled=args["server_side"], forwarder=forwarder) as eng:
+        with engine.Engine(port, args.get("strategy", ""), server_side=args["server_side"], environment_id=environment["id"], output_directory=output_path, log_level=args.get("log", "debug"), enabled=args["server_side"], forwarder=forwarder, interface=args.get("interface")) as eng:
             with TestServer(site_to_test, evaluator, environment, logger) as site_to_test:
                 evaluator.client_args.update({"server" : site_to_test})
                 fitness = evaluator.run_client(evaluator.client_args, environment, logger)
@@ -164,6 +164,7 @@ class HTTPPluginRunner(Plugin):
         parser.add_argument('--use-external-sites', action='store_true', help="draw from the pool of external servers (defined in external_sites.py) for testing.")
         parser.add_argument('--environment-id', action='store', help="ID of the current environment")
         parser.add_argument('--output-directory', action='store', help="Where to output results")
+        parser.add_argument('--interface', action='store', help="interface for the server to bind on")
         parser.add_argument('--port', action='store', type=int, default=80, help='port to use')
         args, _ = parser.parse_known_args(command)
         return vars(args)
