@@ -78,7 +78,9 @@ class HTTPClient(ClientPlugin):
         injected_http = args.get("injected_http_contains")
         try:
             res = requests.get(url, allow_redirects=False, timeout=3, headers=headers)
-            logger.debug(res.text)
+            logger.debug("Response from GET request: %s", str(res.text))
+            if injected_http:
+                logger.debug("Checking for '%s' in censor response", injected_http)
             # If we need to monitor for an injected response, check that here
             if injected_http and injected_http in res.text:
                 fitness -= 90
