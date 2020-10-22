@@ -119,7 +119,9 @@ class Engine():
         self.censorship_detected = False
 
         self.interface = interface
+        self.specify_interface = True # track whether a single interface was specified
         if not interface:
+            self.specify_interface = False
             self.interface = actions.utils.get_interface()
 
         # Specifically define an L3Socket to send our packets. This is an optimization
@@ -226,19 +228,26 @@ class Engine():
         add_or_remove = "A"
         if remove:
             add_or_remove = "D"
+
+        out_interface = ""
+        in_interface = ""
+        if self.specify_interface:
+            out_interface = "-o %s " % self.interface
+            in_interface = "-i %s " % self.interface
+
         cmds = []
         for proto in ["tcp", "udp"]:
-            cmds += ["iptables -%s %s -p %s --%s %d -o %s -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port1, self.server_port, self.interface, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port2, self.server_port, self.interface, self.in_queue_num)]
+            cmds += ["iptables -%s %s -p %s --%s %d %s-j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, port1, self.server_port, out_interface, self.out_queue_num),
+                    "iptables -%s %s -p %s --%s %d %s-j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, port2, self.server_port, in_interface, self.in_queue_num)]
             # If this machine is acting as a middlebox, we need to add the same rules again
             # in the opposite direction so that we can pass packets back and forth
             if self.forwarder:
-                cmds += ["iptables -%s %s -p %s --%s %d -o %s -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port2, self.server_port, self.interface, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -i %s -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port1, self.server_port, self.interface, self.in_queue_num)]
+                cmds += ["iptables -%s %s -p %s --%s %d %s-j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, port2, self.server_port, out_interface, self.out_queue_num),
+                    "iptables -%s %s -p %s --%s %d %s-j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, port1, self.server_port, in_interface, self.in_queue_num)]
 
         for cmd in cmds:
             self.logger.debug(cmd)
