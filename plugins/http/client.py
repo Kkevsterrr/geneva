@@ -47,6 +47,7 @@ class HTTPClient(ClientPlugin):
 
         parser.add_argument('--host-header', action='store', default="", help='specifies host header for HTTP request')
         parser.add_argument('--injected-http-contains', action='store', default="", help='checks if injected http response contains string')
+        parser.add_argument('--empty-reseponse-is-censorship', action='store_true', default="", help='if the injected response is empty and constitutes censorship')
 
         args, _ = parser.parse_known_args(command)
         args = vars(args)
@@ -79,16 +80,20 @@ class HTTPClient(ClientPlugin):
         try:
             res = requests.get(url, allow_redirects=False, timeout=3, headers=headers)
             text = res.text
-            headers = "\r\n".join([k + ": " + v for k, v in res.headers.items()])
-            logger.debug("Headers from GET request: %s", str(headers))
-            logger.debug("Response from GET request: %s", str(text))
-            if injected_http:
-                logger.debug("Checking for '%s' in response", injected_http)
-            # If we need to monitor for an injected response, check that here
-            if injected_http and injected_http in (headers + text):
+            if not text and args.get("empty_response_is_censorship"):
+                logger.debug("Empty response detected and this has been identified as censorship.")
                 fitness -= 90
             else:
-                fitness += 100
+                headers = "\r\n".join([k + ": " + v for k, v in res.headers.items()])
+                logger.debug("Headers from GET request: %s", str(headers))
+                logger.debug("Response from GET request: %s", str(text))
+                if injected_http:
+                    logger.debug("Checking for '%s' in response", injected_http)
+                # If we need to monitor for an injected response, check that here
+                if injected_http and injected_http in (headers + text):
+                    fitness -= 90
+                else:
+                    fitness += 100
         except requests.exceptions.ConnectTimeout as exc:
             logger.exception("Socket timeout.")
             fitness -= 100
