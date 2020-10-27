@@ -112,4 +112,5 @@ class HTTPClient(ClientPlugin):
         except Exception:
             logger.exception("Exception caught in HTTP test to site %s.", url)
             fitness += -100
+        logger.debug('Returning initial fitness %d' % fitness)
         return fitness * 4
