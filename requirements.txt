@@ -7,7 +7,7 @@ anytree
 graphviz
 netifaces
 netfilterqueue
-cryptography==3.2
+cryptography==3.3.2
 paramiko
 codecov
 pytest-cov
