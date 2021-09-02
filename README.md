@@ -45,7 +45,9 @@ code, it is a description that tells the engine how it should operate over traff
 ```
 
 Note that if you have stale `iptables` rules or other rules that rely on Geneva's default queues,
-this will fail. To fix this, remove those rules. 
+this will fail. To fix this, remove those rules.
+
+Also note that if you want to specify multiple ports for Geneva to monitor, you can specify a port range using `--server-port 4000:5000` to monitor all ports in the range 4000-5000, or you can specify a list like `--server-port 80,443,4444` to only monitor the explicit ports given.
 
 ## Strategy Library
 
