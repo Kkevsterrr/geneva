@@ -47,7 +47,7 @@ class Engine():
                        demo_mode=False):
         """
         Args:
-            server_port (int): The port(s) the engine will monitor
+            server_port (str): The port(s) the engine will monitor
             string_strategy (str): String representation of strategy DNA to apply to the network
             environment_id (str, None): ID of the given strategy
             server_side (bool, False): Whether or not the engine is running on the server side of the connection
