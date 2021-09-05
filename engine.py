@@ -47,7 +47,7 @@ class Engine():
                        demo_mode=False):
         """
         Args:
-            server_port (int): The port the engine will monitor
+            server_port (str): The port(s) the engine will monitor
             string_strategy (str): String representation of strategy DNA to apply to the network
             environment_id (str, None): ID of the given strategy
             server_side (bool, False): Whether or not the engine is running on the server side of the connection
@@ -221,17 +221,24 @@ class Engine():
             add_or_remove = "D"
         cmds = []
         for proto in ["tcp", "udp"]:
-            cmds += ["iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port1, self.server_port, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port2, self.server_port, self.in_queue_num)]
+            # Need to change the match rule if multiple ports are specified
+            # Don't need to do any checking on the port since the iptables command can error, closing the engine
+            # Default match policy is the protocol
+            match_policy = proto
+            if any(x in self.server_port for x in [":", ","]):
+                match_policy = "multiport"
+
+            cmds += ["iptables -%s %s -p %s --match %s --%s %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, match_policy, port1, self.server_port, self.out_queue_num),
+                    "iptables -%s %s -p %s --match %s --%s %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, match_policy, port2, self.server_port, self.in_queue_num)]
             # If this machine is acting as a middlebox, we need to add the same rules again
             # in the opposite direction so that we can pass packets back and forth
             if self.forwarder:
-                cmds += ["iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, out_chain, proto, port2, self.server_port, self.out_queue_num),
-                    "iptables -%s %s -p %s --%s %d -j NFQUEUE --queue-num %d" %
-                    (add_or_remove, in_chain, proto, port1, self.server_port, self.in_queue_num)]
+                cmds += ["iptables -%s %s -p %s --match %s --%s %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, out_chain, proto, match_policy, port2, self.server_port, self.out_queue_num),
+                    "iptables -%s %s -p %s --match %s --%s %s -j NFQUEUE --queue-num %d" %
+                    (add_or_remove, in_chain, proto, match_policy, port1, self.server_port, self.in_queue_num)]
 
         for cmd in cmds:
             self.logger.debug(cmd)
@@ -409,7 +416,8 @@ def get_args():
     Sets up argparse and collects arguments.
     """
     parser = argparse.ArgumentParser(description='The engine that runs a given strategy.')
-    parser.add_argument('--server-port', type=int, action='store', required=True)
+    # Store a string, not int, in case of port ranges/lists. The iptables command checks the port var
+    parser.add_argument('--server-port', action='store', required=True)
     parser.add_argument('--environment-id', action='store', help="ID of the current strategy under test")
     parser.add_argument('--sender-ip', action='store', help="IP address of sending machine, used for NAT")
     parser.add_argument('--routing-ip', action='store', help="Public IP of this machine, used for NAT")
