@@ -222,10 +222,11 @@ class Engine():
         cmds = []
         for proto in ["tcp", "udp"]:
             # Need to change the match rule if multiple ports are specified
-            # Don't need to do any checking on the port since the iptables command can error, closing the engine
             # Default match policy is the protocol
             match_policy = proto
-            if any(x in self.server_port for x in [":", ","]):
+            # Don't need to do any checking on the port since the iptables command can error, closing the engine
+            # Change server port to str for backwards compatibility calling engine directly with an int
+            if any(x in str(self.server_port) for x in [":", ","]):
                 match_policy = "multiport"
 
             cmds += ["iptables -%s %s -p %s --match %s --%s %s -j NFQUEUE --queue-num %d" %
