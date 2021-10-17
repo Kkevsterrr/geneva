@@ -1,5 +1,7 @@
 # Geneva [![Build Status](https://travis-ci.com/Kkevsterrr/geneva.svg?branch=master)](https://travis-ci.com/Kkevsterrr/geneva) [![codecov](https://codecov.io/gh/Kkevsterrr/geneva/branch/master/graph/badge.svg)](https://codecov.io/gh/Kkevsterrr/geneva) [![Documentation Status](https://readthedocs.org/projects/geneva/badge/?version=latest)](https://geneva.readthedocs.io/en/latest/?badge=latest)
 
+**Are you using Geneva? If so, let us know! Shoot us an email at geneva@cs.umd.edu, or to use PGP, email us directly with our keys [on our website](https://geneva.cs.umd.edu/people/).**
+
 Geneva is an artificial intelligence tool that defeats censorship by exploiting bugs in censors, such as those in China, India, and Kazakhstan. Unlike many other anti-censorship solutions which require assistance from outside the censoring regime (Tor, VPNs, etc.), Geneva runs strictly on one side of the connection (either the client or server side).
 
 Under the hood, Geneva uses a genetic algorithm to evolve censorship evasion strategies and has found several previously unknown bugs in censors. Geneva's strategies manipulate the network stream to confuse the censor without impacting the client/server communication. This makes Geneva effective against many types of in-network censorship (though it cannot be used against IP-blocking censorship). 
