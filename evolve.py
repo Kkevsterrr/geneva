@@ -575,7 +575,7 @@ def genetic_solve(logger, options, ga_evaluator):
                         best_ind.environment_id, str(best_fit), str(best_ind))
 
             # Select next generation
-            population = selection_tournament(offspring, k=len(population) - options["elite_clones"], tournsize=10)
+            population = selection_tournament(offspring, k=len(offspring) - options["elite_clones"], tournsize=10)
 
             # Add the elite clones
             if options["elite_clones"] > 0:
