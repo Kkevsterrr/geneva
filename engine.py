@@ -132,9 +132,11 @@ class Engine():
 
     def __exit__(self, exc_type, exc_value, tb):
         """
-        Allows the engine to be used as a context manager; simply stops the engine
-        if enabled.
+        Allows the engine to be used as a context manager
+        Stops the engine if enabled and closes loggers.
         """
+        for handler in self.logger.handlers:
+            handler.close()
         if self.enabled:
             self.shutdown_nfqueue()
 
