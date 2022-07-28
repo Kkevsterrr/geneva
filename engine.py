@@ -461,8 +461,7 @@ def main(args):
                 in_queue_num=args["in_queue_num"],
                 out_queue_num=args["out_queue_num"],
                 save_seen_packets=args["no_save_packets"],
-                demo_mode=args["demo_mode"]) as eng:
-        eng.initialize_nfqueue()
+                demo_mode=args["demo_mode"]):
 
         threading.Event().wait()  # Wait forever
 
