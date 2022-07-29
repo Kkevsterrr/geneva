@@ -132,9 +132,11 @@ class Engine():
 
     def __exit__(self, exc_type, exc_value, tb):
         """
-        Allows the engine to be used as a context manager; simply stops the engine
-        if enabled.
+        Allows the engine to be used as a context manager
+        Stops the engine if enabled and closes loggers.
         """
+        for handler in self.logger.handlers:
+            handler.close()
         if self.enabled:
             self.shutdown_nfqueue()
 
@@ -443,29 +445,25 @@ def main(args):
     """
     Kicks off the engine with the given arguments.
     """
-    try:
-        nat_config = {}
-        if args.get("sender_ip") and args.get("routing_ip") and args.get("forward_ip"):
-            nat_config = {"sender_ip" : args["sender_ip"],
-                          "routing_ip" : args["routing_ip"],
-                          "forward_ip" : args["forward_ip"]}
+    nat_config = {}
+    if args.get("sender_ip") and args.get("routing_ip") and args.get("forward_ip"):
+        nat_config = {"sender_ip": args["sender_ip"],
+                      "routing_ip": args["routing_ip"],
+                      "forward_ip": args["forward_ip"]}
 
-        eng = Engine(args["server_port"],
-                     args["strategy"],
-                     environment_id=args["environment_id"],
-                     server_side=args["server_side"],
-                     output_directory=args["output_directory"],
-                     forwarder=nat_config,
-                     log_level=args["log"],
-                     in_queue_num=args["in_queue_num"],
-                     out_queue_num=args["out_queue_num"],
-                     save_seen_packets=args["no_save_packets"],
-                     demo_mode=args["demo_mode"])
-        eng.initialize_nfqueue()
-        while True:
-            time.sleep(0.5)
-    finally:
-        eng.shutdown_nfqueue()
+    with Engine(args["server_port"],
+                args["strategy"],
+                environment_id=args["environment_id"],
+                server_side=args["server_side"],
+                output_directory=args["output_directory"],
+                forwarder=nat_config,
+                log_level=args["log"],
+                in_queue_num=args["in_queue_num"],
+                out_queue_num=args["out_queue_num"],
+                save_seen_packets=args["no_save_packets"],
+                demo_mode=args["demo_mode"]):
+
+        threading.Event().wait()  # Wait forever
 
 
 if __name__ == "__main__":
