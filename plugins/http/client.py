@@ -39,6 +39,9 @@ class HTTPClient(ClientPlugin):
         parser.add_argument('--host-header', action='store', default="", help='specifies host header for HTTP request')
         parser.add_argument('--injected-http-contains', action='store',
                             default="", help='checks if injected http response contains string')
+        parser.add_argument('--valid-http-contains', action='store',
+                            default="", help='checks if http response contains the given string. '
+                                             'if not, the connection is evaluated as broken')
 
         args, _ = parser.parse_known_args(command)
         args = vars(args)
@@ -73,6 +76,13 @@ class HTTPClient(ClientPlugin):
             # If we need to monitor for an injected response, check that here
             if args.get("injected_http_contains") and args.get("injected_http_contains") in res.text:
                 fitness -= 90
+            elif args.get("valid_http_contains"):
+                if args.get("valid_http_contains") in res.text:
+                    # valid response found
+                    fitness += 100
+                else:
+                    fitness -= 120
+                    logger.debug("valid response needed, but not found -> connection broke\n")
             else:
                 fitness += 100
         except requests.exceptions.ConnectTimeout:
