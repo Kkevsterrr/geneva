@@ -3,23 +3,14 @@ Run by the evaluator, tries to make a GET request to a given server
 """
 
 import argparse
-import logging
 import os
-import random
 import socket
-import sys
-import time
-import traceback
 import urllib.request
-
 import requests
 
-socket.setdefaulttimeout(1)
-
-import external_sites
-import actions.utils
-
 from plugins.plugin_client import ClientPlugin
+
+socket.setdefaulttimeout(1)
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -46,7 +37,11 @@ class HTTPClient(ClientPlugin):
         parser = argparse.ArgumentParser(description='HTTP Client', prog="http/client.py")
 
         parser.add_argument('--host-header', action='store', default="", help='specifies host header for HTTP request')
-        parser.add_argument('--injected-http-contains', action='store', default="", help='checks if injected http response contains string')
+        parser.add_argument('--injected-http-contains', action='store',
+                            default="", help='checks if injected http response contains string')
+        parser.add_argument('--valid-http-contains', action='store',
+                            default="", help='checks if http response contains the given string. '
+                                             'if not, the connection is evaluated as broken')
 
         args, _ = parser.parse_known_args(command)
         args = vars(args)
@@ -70,36 +65,42 @@ class HTTPClient(ClientPlugin):
         # If we've been given a non-standard port, append that to the URL
         port = args.get("port", 80)
         if port != 80:
-            url += ":%s" % str(port)
+            url += f":{str(port)}"
 
         if args.get("bad_word"):
-            url += "?q=%s" % args.get("bad_word")
+            url += f"?q={args.get('bad_word')}"
 
-        injected_http = args.get("injected_http_contains")
         try:
             res = requests.get(url, allow_redirects=False, timeout=3, headers=headers)
             logger.debug(res.text)
             # If we need to monitor for an injected response, check that here
-            if injected_http and injected_http in res.text:
+            if args.get("injected_http_contains") and args.get("injected_http_contains") in res.text:
                 fitness -= 90
+            elif args.get("valid_http_contains"):
+                if args.get("valid_http_contains") in res.text:
+                    # valid response found
+                    fitness += 100
+                else:
+                    fitness -= 120
+                    logger.debug("valid response needed, but not found -> connection broke\n")
             else:
                 fitness += 100
-        except requests.exceptions.ConnectTimeout as exc:
+        except requests.exceptions.ConnectTimeout:
             logger.exception("Socket timeout.")
             fitness -= 100
-        except (requests.exceptions.ConnectionError, ConnectionResetError) as exc:
+        except (requests.exceptions.ConnectionError, ConnectionResetError):
             logger.exception("Connection RST.")
             fitness -= 90
         except urllib.error.URLError as exc:
             logger.debug(exc)
-            fitness += -101
+            fitness -= 101
         # Timeouts generally mean the strategy killed the TCP stream.
         # HTTPError usually mean the request was destroyed.
         # Punish this more harshly than getting caught by the censor.
         except (requests.exceptions.Timeout, requests.exceptions.HTTPError) as exc:
             logger.debug(exc)
-            fitness += -120
+            fitness -= 120
         except Exception:
             logger.exception("Exception caught in HTTP test to site %s.", url)
-            fitness += -100
+            fitness -= 100
         return fitness * 4
