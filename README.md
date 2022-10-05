@@ -2,7 +2,7 @@
 
 **Are you using Geneva? If so, let us know! Shoot us an email at geneva@cs.umd.edu, or to use PGP, email us directly with our keys [on our website](https://geneva.cs.umd.edu/people/).**
 
-Geneva is an artificial intelligence tool that defeats censorship by exploiting bugs in censors, such as those in China, India, and Kazakhstan. Unlike many other anti-censorship solutions which require assistance from outside the censoring regime (Tor, VPNs, etc.), Geneva runs strictly on one side of the connection (either the client or server side).
+Geneva is an artificial intelligence tool designed by researchers at the University of Maryland that defeats censorship by exploiting bugs in censors, such as those in China, India, and Kazakhstan. Unlike many other anti-censorship solutions which require assistance from outside the censoring regime (Tor, VPNs, etc.), Geneva runs strictly on one side of the connection (either the client or server side). Geneva should be considered a research project for researchers, and it is not built with a graphical user interface. 
 
 Under the hood, Geneva uses a genetic algorithm to evolve censorship evasion strategies and has found several previously unknown bugs in censors. Geneva's strategies manipulate the network stream to confuse the censor without impacting the client/server communication. This makes Geneva effective against many types of in-network censorship (though it cannot be used against IP-blocking censorship). 
 
