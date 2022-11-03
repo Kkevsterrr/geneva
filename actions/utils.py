@@ -107,12 +107,14 @@ def parse(requested_trees, logger):
 
 
 
-def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level="DEBUG", demo_mode=False):
+def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_level="DEBUG", file_log_level="DEBUG", demo_mode=False):
     """
     Configures and returns a logger.
     """
     if type(log_level) == str:
         log_level = log_level.upper()
+    if type(file_log_level) == str:
+        file_log_level = file_log_level.upper()
     global CONSOLE_LOG_LEVEL
     full_path = os.path.join(basepath, log_dir, "logs")
     if not os.path.exists(full_path):
@@ -130,7 +132,6 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     if logger.handlers:
         return logger
     fh = logging.FileHandler(os.path.join(basepath, log_dir, "logs", "%s.%s.log" % (environment_id, log_name)))
-    fh.setLevel("DEBUG")
 
     log_prefix = "[%s] " % log_name.upper()
     formatter = logging.Formatter("%(asctime)s %(levelname)s:" + log_prefix + "%(message)s", datefmt="%Y-%m-%d %H:%M:%S")
@@ -141,6 +142,7 @@ def get_logger(basepath, log_dir, logger_name, log_name, environment_id, log_lev
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     ch.setLevel(log_level)
+    fh.setLevel(file_log_level)
     CONSOLE_LOG_LEVEL = log_level.lower()
     logger.addHandler(ch)
     return CustomAdapter(logger, {}) if demo_mode else logger

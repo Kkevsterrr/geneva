@@ -39,6 +39,7 @@ class Engine():
                        server_side=False,
                        output_directory="trials",
                        log_level="info",
+                       file_log_level="info",
                        enabled=True,
                        in_queue_num=None,
                        out_queue_num=None,
@@ -89,6 +90,7 @@ class Engine():
                                                "engine",
                                                self.environment_id,
                                                log_level=log_level,
+                                               file_log_level=file_log_level,
                                                demo_mode=demo_mode)
         # Warn if these are not provided
         if not environment_id:
@@ -431,7 +433,10 @@ def get_args():
     parser.add_argument('--server-side', action='store_true', help='Enable if this is running on the server side')
     parser.add_argument('--log', action='store', default="debug",
                         choices=("debug", "info", "warning", "critical", "error"),
-                        help="Sets the log level")
+                        help="Sets the log level for the console")
+    parser.add_argument('--file-log', action='store', default="debug",
+                        choices=("debug", "info", "warning", "critical", "error"),
+                        help="Sets the log level for the log file")
     parser.add_argument('--no-save-packets', action='store_false', help='Disables recording captured packets')
     parser.add_argument("--in-queue-num", action="store", help="NfQueue number for incoming packets", default=1, type=int)
     parser.add_argument("--out-queue-num", action="store", help="NfQueue number for outgoing packets", default=None, type=int)
@@ -458,6 +463,7 @@ def main(args):
                 output_directory=args["output_directory"],
                 forwarder=nat_config,
                 log_level=args["log"],
+                file_log_level=args["file_log"],
                 in_queue_num=args["in_queue_num"],
                 out_queue_num=args["out_queue_num"],
                 save_seen_packets=args["no_save_packets"],
