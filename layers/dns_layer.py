@@ -164,7 +164,7 @@ class DNSLayer(Layer):
         # Next, we must rebuild the DNS packet itself. If we try to have scapy parse either dns_qr1 or dns_qr2, they
         # will look malformed, since neither contains a complete request. Therefore, we must build the entire
         # DNS packet at once. First, we must remove the original DNSQR, since this contains the original request
-        del packet["DNS"].qd
+        packet["DNS"].qd = None
 
         # Once the DNSQR is removed, scapy automatically sets the qdcount to 0. Adjust it to 2
         packet["DNS"].qdcount = 2
