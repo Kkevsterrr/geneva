@@ -39,7 +39,7 @@ class Engine():
                        server_side=False,
                        output_directory="trials",
                        log_level="info",
-                       file_log_level="info",
+                       file_log_level="debug",
                        enabled=True,
                        in_queue_num=None,
                        out_queue_num=None,
