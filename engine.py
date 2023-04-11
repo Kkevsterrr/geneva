@@ -259,9 +259,15 @@ class Engine():
         """
         Initializes the nfqueue for input and output forests.
         """
-        self.logger.debug("Engine created with strategy %s (ID %s) to port %s",
-                          str(self.strategy).strip(), self.environment_id, self.server_port)
-        self.configure_iptables()
+        if self.server_port is not None:
+            self.logger.debug("Engine created with strategy %s (ID %s) to port %s",
+                              str(self.strategy).strip(), self.environment_id, self.server_port)
+        else:
+            self.logger.debug("Engine created with strategy %s (ID %s) to NFQueue number %s for incoming packets and to NFQueue number %s for outcoming packets",
+                              str(self.strategy).strip(), self.environment_id, self.in_queue_num, self.out_queue_num)
+
+        if self.server_port is not None:
+            self.configure_iptables()
 
         self.out_nfqueue_started = False
         self.in_nfqueue_started = False
@@ -313,7 +319,8 @@ class Engine():
             self.in_nfqueue.unbind()
         if self.out_nfqueue:
             self.out_nfqueue.unbind()
-        self.configure_iptables(remove=True)
+        if self.server_port is not None:
+            self.configure_iptables(remove=True)
         self.socket.close()
         self.out_nfqueue_socket.close()
         self.in_nfqueue_socket.close()
@@ -422,7 +429,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser(description='The engine that runs a given strategy.')
     # Store a string, not int, in case of port ranges/lists. The iptables command checks the port var
-    parser.add_argument('--server-port', action='store', required=True)
+    parser.add_argument('--server-port', action='store', required=False)
     parser.add_argument('--environment-id', action='store', help="ID of the current strategy under test")
     parser.add_argument('--sender-ip', action='store', help="IP address of sending machine, used for NAT")
     parser.add_argument('--routing-ip', action='store', help="Public IP of this machine, used for NAT")
