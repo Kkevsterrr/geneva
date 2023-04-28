@@ -31,6 +31,11 @@ On Debian 10 systems, some users have reported needing to install netfilterqueue
 # sudo python3 -m pip install --upgrade -U git+https://github.com/kti/python-netfilterqueue
 ```
 
+On Arch systems, some users have reported needing to make liblibc.a available for netfilterqueue:
+```
+sudo ln -s -f /usr/lib64/libc.a /usr/lib64/liblibc.a 
+```
+
 ## Running a Strategy
 
 A censorship evasion strategy is simply a _description of how network traffic should be modified_. A strategy is not
