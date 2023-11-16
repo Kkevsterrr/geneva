@@ -99,7 +99,7 @@ Consider the following example of a simple Geneva strategy.
                            |
              +-------------+------------+
              |                          |
-+------------v----------+               v    <-- dupilcate has no right child, so this packet will be sent on the wire unimpacted
++------------v----------+               v    <-- duplicate has no right child, so this packet will be sent on the wire unimpacted
           tamper              
   {TCP:flags:replace:R}      <-- parameters to this action describe how the packet should be tampered 
 +------------+----------+
