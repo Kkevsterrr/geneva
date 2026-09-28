@@ -384,33 +384,72 @@ class Evaluator():
 
     def remote_exec_cmd(self, remote, command, logger, timeout=15, verbose=True):
         """
-        Given a remote SSH session, executes a string command. Blocks until
-        command completes, and returns the stdout and stderr. If the SSH
-        connection is broken, it will try again.
+        Execute a command over SSH and collect its stdout and stderr.
+
+        Drain both streams while the command runs: waiting for its exit status
+        first can deadlock if the output fills the SSH channel's receive window.
+        The timeout is a per-attempt, monotonic deadline for execution and
+        output collection. A timed-out command is not retried, since it may
+        already have had effects on the remote host. Connection failures retain
+        the existing retry behavior.
 
         Args:
-            remote: Paramiko SSH channel to execute commands over
+            remote: Paramiko SSH client used to execute commands
             command (str): Command to execute
             logger (:obj:`logging.Logger`): A logger to log with
-            timeout (int, optional): Timeout for the command
+            timeout (int, optional): Maximum seconds per command attempt
             verbose (bool, optional): Whether the output should be printed
 
         Returns:
-            tuple: (stdout, stderr) of command, each is a list
+            tuple: (stdout, stderr), each a list of decoded text lines
         """
         i, max_tries = 0, 3
         lines = []
         error_lines = []
-        stdin_, stdout_, stderr_ = None, None, None
         while i < max_tries:
+            stdin_, stdout_, stderr_ = None, None, None
+            channel = None
             try:
                 if verbose:
                     logger.debug(command)
+
+                deadline = None if timeout is None else time.monotonic() + timeout
                 stdin_, stdout_, stderr_ = remote.exec_command(command, timeout=timeout)
-                # Block until the client finishes
-                stdout_.channel.recv_exit_status()
-                error_lines = stderr_.readlines()
-                lines = stdout_.readlines()
+                channel = stdout_.channel
+                stdout_chunks, stderr_chunks = [], []
+
+                while True:
+                    remaining = None if deadline is None else deadline - time.monotonic()
+                    if remaining is not None and remaining <= 0:
+                        raise TimeoutError("Remote command exceeded its %s second timeout" % timeout)
+
+                    # Read each stream separately. Reading all of one stream
+                    # before the other can also fill the shared SSH window.
+                    received = False
+                    if channel.recv_ready():
+                        stdout_chunks.append(channel.recv(32768))
+                        received = True
+                    if channel.recv_stderr_ready():
+                        stderr_chunks.append(channel.recv_stderr(32768))
+                        received = True
+
+                    # Once the server has reported completion and the buffered
+                    # output is empty, recv_exit_status() cannot block on the
+                    # receive window. Its value is not used for fitness here.
+                    if (channel.exit_status_ready() and not channel.recv_ready() and not channel.recv_stderr_ready()):
+                        channel.recv_exit_status()
+                        break
+
+                    if not received:
+                        time.sleep(0.01 if remaining is None else min(0.01, remaining))
+
+                # The callers expect text lines: get_log writes them to a text
+                # file, while run_remote_client parses the first fitness line.
+                lines = b"".join(stdout_chunks).decode("utf-8", "replace").splitlines(True)
+                error_lines = b"".join(stderr_chunks).decode("utf-8", "replace").splitlines(True)
+                break
+            except TimeoutError:
+                logger.error("Timed out executing \"%s\" on remote host." % command)
                 break
             # We would like to catch paramiko.SSHException here, but because of issues with importing paramiko
             # at the top of the file in the main namespace, we catch Exception instead as a broader exception.
@@ -425,17 +464,18 @@ class Evaluator():
                 except Exception:
                     logger.error("Failed to re-connect remote - trying again.")
                 i += 1
+            finally:
+                # Terminate this command's channel, including on timeout, so
+                # a stalled session cannot be reused.
+                if channel is not None:
+                    channel.close()
+                for stream in (stdin_, stdout_, stderr_):
+                    if stream is not None:
+                        stream.close()
 
         if verbose:
             for line in error_lines:
                 logger.debug("ERROR: %s", line.strip())
-        # Close the channels
-        if stdin_:
-            stdin_.close()
-        if stdout_:
-            stdout_.close()
-        if stderr_:
-            stderr_.close()
         return lines, error_lines
 
     def get_log(self, remote, worker, log_name, logger):
