@@ -35,6 +35,10 @@ On Arch systems, some users have reported needing to make liblibc.a available fo
 ```
 sudo ln -s -f /usr/lib64/libc.a /usr/lib64/liblibc.a 
 ```
+On Ubuntu systems, make liblibc.a available for netfilterqueue:
+```
+ sudo ln -s -f /usr/lib/x86_64-linux-gnu/libc.a /usr/lib/x86_64-linux-gnu/liblibc.a
+```
 
 ## Running a Strategy
 
